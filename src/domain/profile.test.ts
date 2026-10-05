@@ -1,4 +1,4 @@
-import { parseAge, parseWakeSleep, parseWeight, PROFILE_MESSAGES, stepGoal } from './profile';
+import { quietHoursText, parseAge, parseWakeSleep, parseWeight, PROFILE_MESSAGES, stepGoal } from './profile';
 
 describe('stepGoal', () => {
   it('±100 ml ve 500–4.000 sınırı', () => {
@@ -32,5 +32,14 @@ describe('parseWakeSleep', () => {
     expect(parseWakeSleep('8:00', '23:00').ok).toBe(false);
     expect(parseWakeSleep('08:00', '25:00').ok).toBe(false);
     expect(parseWakeSleep('08:00', '08:00')).toEqual({ ok: false, message: PROFILE_MESSAGES.sameTimes });
+  });
+});
+
+describe('quietHoursText', () => {
+  it('sessiz aralık uyuma → uyanma saatidir ve seçime göre değişir', () => {
+    expect(quietHoursText(480, 60)).toBe('01.00 – 08.00 arasında bildirim gönderilmez.'); // uyanma 08:00, uyuma 01:00
+    expect(quietHoursText(480, 1380)).toBe('23.00 – 08.00 arasında bildirim gönderilmez.');
+    expect(quietHoursText(420, 1410)).toBe('23.30 – 07.00 arasında bildirim gönderilmez.');
+    expect(quietHoursText(780, 120)).toBe('02.00 – 13.00 arasında bildirim gönderilmez.');
   });
 });

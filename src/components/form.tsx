@@ -96,6 +96,21 @@ export function PrimaryButton({ label, onPress, disabled }: { label: string; onP
   );
 }
 
+/** Açık/kapalı anahtarı (prototipteki yeşil hap). */
+export function Toggle({ on, onChange, label }: { on: boolean; onChange: (on: boolean) => void; label: string }) {
+  return (
+    <Pressable
+      onPress={() => onChange(!on)}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: on }}
+      style={[styles.toggle, { backgroundColor: on ? colors.green : '#B9A696', alignItems: on ? 'flex-end' : 'flex-start' }]}
+    >
+      <View style={styles.knob} />
+    </Pressable>
+  );
+}
+
 export function LinkRow({ label, value, onPress }: { label: string; value?: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={styles.linkRow}>
@@ -125,6 +140,8 @@ const styles = StyleSheet.create({
   goal: { fontSize: 34, lineHeight: 40 },
   primary: { height: 60, borderRadius: 22, backgroundColor: colors.green, borderBottomWidth: 5, borderBottomColor: colors.greenDark, alignItems: 'center', justifyContent: 'center' },
   primaryText: { fontSize: 20, color: colors.white },
+  toggle: { width: 56, height: 32, borderRadius: 16, padding: 3, justifyContent: 'center' },
+  knob: { width: 26, height: 26, borderRadius: 13, backgroundColor: colors.white },
   linkRow: { height: 60, paddingHorizontal: 16, borderRadius: 24, backgroundColor: colors.white, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   linkLabel: { fontFamily: fonts.bodyHeavy, fontSize: 15, color: colors.ink },
   linkRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },

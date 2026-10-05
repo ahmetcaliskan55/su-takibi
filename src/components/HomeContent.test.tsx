@@ -18,7 +18,7 @@ function render(d: DaySummary, props: Partial<Parameters<typeof HomeContent>[0]>
   let renderer!: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <HomeContent day={d} now={NOW} saving={false} actionError={null} onOpenAdd={jest.fn()} onOpenRecords={jest.fn()} onOpenProfile={jest.fn()} bubbleEvent="idle" onQuickAdd={onQuickAdd} {...props} />,
+      <HomeContent day={d} now={NOW} saving={false} actionError={null} onOpenAdd={jest.fn()} onOpenRecords={jest.fn()} onOpenProfile={jest.fn()} bubbleEvent="idle" tone="komik" onQuickAdd={onQuickAdd} {...props} />,
     );
   });
   return { root: renderer.root, onQuickAdd };

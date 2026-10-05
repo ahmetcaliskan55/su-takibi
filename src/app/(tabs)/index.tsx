@@ -50,6 +50,7 @@ export default function TodayScreen() {
         saving={t.saving}
         actionError={t.actionError}
         bubbleEvent={t.bubbleEvent}
+        tone={settings.tone}
         onQuickAdd={(ml) => void t.addQuick(ml)}
         onOpenAdd={() => {
           t.clearActionError();

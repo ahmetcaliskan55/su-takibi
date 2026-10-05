@@ -1,3 +1,4 @@
+import { formatMinuteOfDay } from './date';
 import { FORM_MESSAGES, parseTimeInput } from './logForm';
 import { MAX_GOAL_ML, MIN_GOAL_ML } from './water';
 
@@ -59,4 +60,22 @@ export function parseWakeSleep(
   if (wakeMin === null || sleepMin === null) return { ok: false, message: FORM_MESSAGES.timeFormat };
   if (wakeMin === sleepMin) return { ok: false, message: PROFILE_MESSAGES.sameTimes };
   return { ok: true, value: { wakeMin, sleepMin } };
+}
+
+export const GLASS_MESSAGE = 'Miktarı 50 ile 2.000 ml arasında rakamla gir.';
+
+/** Özel bardak/şişe miktarı: 50–2.000 ml tam sayı. */
+export function parseGlassAmount(text: string): Parsed<number> {
+  const t = text.trim();
+  if (!/^\d+$/.test(t)) return { ok: false, message: t === '' ? 'Önce bir miktar gir.' : GLASS_MESSAGE };
+  const n = Number(t);
+  return n >= 50 && n <= 2000 ? { ok: true, value: n } : { ok: false, message: GLASS_MESSAGE };
+}
+
+/**
+ * Sessiz saatler: uyuma saatinden uyanma saatine kadar (gece yarısını aşabilir).
+ * Örn. uyanma 08:00, uyuma 01:00 → "01.00 – 08.00 arasında bildirim gönderilmez."
+ */
+export function quietHoursText(wakeMin: number, sleepMin: number): string {
+  return `${formatMinuteOfDay(sleepMin)} – ${formatMinuteOfDay(wakeMin)} arasında bildirim gönderilmez.`;
 }
