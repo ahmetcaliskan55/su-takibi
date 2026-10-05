@@ -6,7 +6,8 @@ import { QUICK_AMOUNTS_ML } from '@/domain/water';
 import type { DaySummary } from '@/db/waterRepository';
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';
-import { ClockIcon } from './icons';
+import { ChevronIcon, ClockIcon, PlusIcon } from './icons';
+import { DisplayText } from './DisplayText';
 import { DropIcon } from './DropIcon';
 import { Plant } from './Plant';
 import { ScreenHeader } from './ScreenHeader';
@@ -15,15 +16,17 @@ interface Props {
   day: DaySummary;
   now: Date;
   saving: boolean;
-  addError: string | null;
+  actionError: string | null;
   bubbleEvent: BubbleEvent;
   onQuickAdd: (amountMl: number) => void;
+  onOpenAdd: () => void;
+  onOpenRecords: () => void;
 }
 
 const QUICK_ICON_SIZES: Record<number, [number, number]> = { 150: [12, 15], 250: [15, 18], 500: [18, 22] };
 const STAGE_DROPS = ['Filiz', 'Yaprak', 'Tomurcuk', 'Çiçek'] as const;
 
-export function HomeContent({ day, now, saving, addError, bubbleEvent, onQuickAdd }: Props) {
+export function HomeContent({ day, now, saving, actionError, bubbleEvent, onQuickAdd, onOpenAdd, onOpenRecords }: Props) {
   const { width } = useWindowDimensions();
   const cardWidth = width - 40;
   const plantWidth = Math.min(216, Math.round(cardWidth * 0.6));
@@ -59,9 +62,9 @@ export function HomeContent({ day, now, saving, addError, bubbleEvent, onQuickAd
         </View>
 
         <View style={[styles.totals, { width: sideWidth }]}>
-          <Text style={styles.totalNumber} accessibilityLabel={`${formatMl(totalMl)} mililitre içildi`}>
+          <DisplayText variant="number" style={styles.totalNumber} accessibilityLabel={`${formatMl(totalMl)} mililitre içildi`}>
             {formatMl(totalMl)}
-          </Text>
+          </DisplayText>
           <Text style={styles.goalText}>/ {formatMl(goalMl)} ml</Text>
           <View style={styles.remainPill}>
             <Text style={styles.remainText}>
@@ -113,18 +116,28 @@ export function HomeContent({ day, now, saving, addError, bubbleEvent, onQuickAd
         })}
       </View>
 
-      {addError ? (
+      <Pressable
+        onPress={onOpenAdd}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+      >
+        <PlusIcon color={colors.white} />
+        <DisplayText style={styles.addText}>Su ekle</DisplayText>
+      </Pressable>
+
+      {actionError ? (
         <Text accessibilityRole="alert" style={styles.errorText}>
-          {addError}
+          {actionError}
         </Text>
       ) : null}
 
-      <View style={styles.lastRow} accessible>
+      <Pressable onPress={onOpenRecords} accessibilityRole="button" accessibilityLabel="Bugünkü kayıtları göster" style={styles.lastRow}>
         <ClockIcon color={colors.inkSoft} />
         <Text style={styles.lastText}>
           {last ? `Son kayıt: ${formatMinuteOfDay(last.minuteOfDay)} · ${formatMl(last.amountMl)} ml` : 'Bugün henüz kayıt yok'}
         </Text>
-      </View>
+        <ChevronIcon color={colors.inkSoft} />
+      </Pressable>
     </ScrollView>
   );
 }
@@ -177,7 +190,7 @@ const styles = StyleSheet.create({
   bubbleLabel: { fontFamily: fonts.bodyHeavy, fontSize: 12, color: colors.green },
   bubbleText: { fontFamily: fonts.bodyHeavy, fontSize: 14, lineHeight: 18, color: colors.ink },
   totals: { position: 'absolute', right: 14, bottom: 16, alignItems: 'flex-start', gap: 4 },
-  totalNumber: { fontFamily: fonts.number, fontSize: 40, lineHeight: 44, color: colors.ink },
+  totalNumber: { fontSize: 40, lineHeight: 44 },
   goalText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.greenText },
   remainPill: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 15, backgroundColor: colors.white },
   remainText: { fontFamily: fonts.bodyHeavy, fontSize: 13, color: colors.ink },
@@ -226,6 +239,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  lastRow: { marginTop: 14, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  addBtn: {
+    marginTop: 12,
+    marginHorizontal: 20,
+    height: 60,
+    borderRadius: 22,
+    backgroundColor: colors.green,
+    borderBottomWidth: 5,
+    borderBottomColor: colors.greenDark,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  addBtnPressed: { opacity: 0.9 },
+  addText: { fontSize: 20, color: colors.white },
+  lastRow: { marginTop: 12, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   lastText: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.inkSoft },
 });

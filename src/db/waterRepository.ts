@@ -13,6 +13,8 @@ export interface WaterLog {
   localDate: string;
   minuteOfDay: number;
   amountMl: number;
+  /** UTC epoch ms; geri yüklemede korunur. */
+  createdAt: number;
 }
 
 export interface DaySummary {
@@ -36,6 +38,14 @@ interface LogRow {
   local_date: string;
   minute_of_day: number;
   amount_ml: number;
+  created_at: number;
+}
+
+export class LogNotFoundError extends Error {
+  constructor(public readonly id: number) {
+    super(`Kayıt bulunamadı: ${id}`);
+    this.name = 'LogNotFoundError';
+  }
 }
 
 const toLog = (r: LogRow): WaterLog => ({
@@ -43,6 +53,7 @@ const toLog = (r: LogRow): WaterLog => ({
   localDate: r.local_date,
   minuteOfDay: r.minute_of_day,
   amountMl: r.amount_ml,
+  createdAt: r.created_at,
 });
 
 export interface NewLogRecord {
@@ -60,6 +71,14 @@ export interface WaterRepository {
   loadDay(localDate: string): Promise<DaySummary>;
   /** Doğrulanmış kaydı ekler; gün satırı yoksa aynı işlemde anlık görüntüyü oluşturur. */
   addLog(record: NewLogRecord, nowMs: number): Promise<WaterLog>;
+  /** Tek kayıt; yoksa `null`. */
+  getLog(id: number): Promise<WaterLog | null>;
+  /** Miktarı/saati günceller; gün ve oluşturma zamanı değişmez. Önceki ve sonraki hâli döndürür. */
+  updateLog(id: number, patch: { minuteOfDay: number; amountMl: number }): Promise<{ before: WaterLog; after: WaterLog }>;
+  /** Kaydı siler ve silinen kaydı döndürür (geri alma için). */
+  deleteLog(id: number): Promise<WaterLog>;
+  /** Silinmiş kaydı aynı kimlik ve içerikle geri koyar (yalnızca geri alma için). */
+  restoreLog(log: WaterLog): Promise<void>;
 }
 
 export function createWaterRepository(db: Db): WaterRepository {
@@ -80,13 +99,21 @@ export function createWaterRepository(db: Db): WaterRepository {
     );
     if (!day) throw new Error(`Gün satırı bulunamadı: ${localDate}`);
     const rows = await db.getAllAsync<LogRow>(
-      `SELECT id, local_date, minute_of_day, amount_ml
+      `SELECT id, local_date, minute_of_day, amount_ml, created_at
        FROM water_logs WHERE local_date = ?
        ORDER BY minute_of_day DESC, id DESC`,
       [localDate],
     );
     const logs = rows.map(toLog);
     return { localDate, goalMl: day.goal_ml, totalMl: sumAmounts(logs), logs };
+  }
+
+  async function readLog(id: number): Promise<WaterLog | null> {
+    const row = await db.getFirstAsync<LogRow>(
+      'SELECT id, local_date, minute_of_day, amount_ml, created_at FROM water_logs WHERE id = ?',
+      [id],
+    );
+    return row ? toLog(row) : null;
   }
 
   function requireDate(localDate: string): void {
@@ -123,10 +150,67 @@ export function createWaterRepository(db: Db): WaterRepository {
             localDate: record.localDate,
             minuteOfDay: record.minuteOfDay,
             amountMl: record.amountMl,
+            createdAt: nowMs,
           };
         });
         if (!created) throw new Error('Kayıt eklenemedi.');
         return created;
+      });
+    },
+
+    getLog: (id) => exclusive(() => readLog(id)),
+
+    async updateLog(id, patch) {
+      const amount = validateAmount(patch.amountMl);
+      if (!amount.ok) throw new RepositoryValidationError(amount.reason);
+      const minute = validateMinuteOfDay(patch.minuteOfDay);
+      if (!minute.ok) throw new RepositoryValidationError(minute.reason);
+
+      return exclusive(async () => {
+        let result: { before: WaterLog; after: WaterLog } | undefined;
+        await db.withTransactionAsync(async () => {
+          const before = await readLog(id);
+          if (!before) throw new LogNotFoundError(id);
+          await db.runAsync('UPDATE water_logs SET minute_of_day = ?, amount_ml = ? WHERE id = ?', [
+            patch.minuteOfDay,
+            patch.amountMl,
+            id,
+          ]);
+          const after = await readLog(id);
+          if (!after) throw new LogNotFoundError(id);
+          result = { before, after };
+        });
+        if (!result) throw new Error('Kayıt güncellenemedi.');
+        return result;
+      });
+    },
+
+    async deleteLog(id) {
+      return exclusive(async () => {
+        let removed: WaterLog | undefined;
+        await db.withTransactionAsync(async () => {
+          const row = await readLog(id);
+          if (!row) throw new LogNotFoundError(id);
+          const res = await db.runAsync('DELETE FROM water_logs WHERE id = ?', [id]);
+          if (res.changes !== 1) throw new Error('Kayıt silinemedi.');
+          removed = row;
+        });
+        if (!removed) throw new Error('Kayıt silinemedi.');
+        return removed;
+      });
+    },
+
+    async restoreLog(log) {
+      requireDate(log.localDate);
+      return exclusive(async () => {
+        await db.withTransactionAsync(async () => {
+          await ensureDay(log.localDate);
+          await db.runAsync(
+            `INSERT INTO water_logs (id, local_date, minute_of_day, amount_ml, created_at)
+             VALUES (?, ?, ?, ?, ?)`,
+            [log.id, log.localDate, log.minuteOfDay, log.amountMl, log.createdAt],
+          );
+        });
       });
     },
   };

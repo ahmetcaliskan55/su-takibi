@@ -4,17 +4,19 @@
 
 Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geliştirilen, günlük su tüketimini sanal bitki büyümesiyle takip eden mobil uygulama. Üyelik, sunucu, reklam ve analitik yoktur; veriler cihazdaki SQLite veritabanında tutulur ve uygulama internetsiz çalışır.
 
-## Mevcut durum: Aşama 1
+## Mevcut durum: Aşama 2
 
 Çalışanlar:
 
-- **Bugün ekranı:** 150 / 250 / 500 ml hızlı ekleme, toplam, kalan, yüzde, beş aşamalı bitki (tohum → filiz → yaprak → tomurcuk → çiçek) ve son kayıt.
+- **Bugün ekranı:** 150 / 250 / 500 ml hızlı ekleme, toplam, kalan, yüzde, beş aşamalı bitki (tohum → filiz → yaprak → tomurcuk → çiçek), son kayıt.
+- **Su ekle paneli:** özel miktar (10–2.000 ml) ve içme saati; boş, geçersiz, negatif ve gelecekteki saat girişleri doğrulanır.
+- **Bugünkü kayıtlar:** saat ve miktarla liste; her kayıt düzenlenebilir ve silinebilir.
+- **Geri al:** ekleme, düzenleme ve silmeden sonra 7 saniyelik bildirim; yalnızca o son işlemi tersine çevirir. Veritabanı işlemi başarısız olursa başarı mesajı gösterilmez.
 - Yerel SQLite: şema + migration altyapısı, günün **hedef anlık görüntüsü** ve su kayıtları. Kayıtlar uygulama kapatılıp açılınca korunur.
 - Günler yerel takvim gününe göre ayrılır; uygulama öne gelince ve gece yarısında gün yeniden hesaplanır.
 - Alt gezinme (Bugün / Geçmiş / Ayarlar). Geçmiş ve Ayarlar şimdilik yalnızca "sonraki aşamada geliyor" yer tutucusudur.
-- Yüklenme ve veritabanı hatası ekranları.
 
-Henüz yok: ilk kurulum, profil, özel miktar paneli, kayıt düzenleme/silme/geri alma, geçmiş, ayarlar, bildirimler, tüm verileri silme.
+Henüz yok: ilk kurulum, profil, geçmiş, ayarlar, bildirimler, tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
 
 > **Günlük hedef (2.000 ml) yalnızca geliştirme varsayılanıdır.** Kişiye özel bir öneri veya tıbbi ihtiyaç değildir. Yaş/kilo/aktiviteye göre hedef önerisi, kaynakları değerlendirildikten sonra ayrı bir aşamada ele alınacaktır; doğrulanmamış formül kullanılmaz.
 
@@ -23,14 +25,16 @@ Henüz yok: ilk kurulum, profil, özel miktar paneli, kayıt düzenleme/silme/ge
 Gereksinimler: [Node.js LTS](https://nodejs.org), Git, telefonda **Expo Go** (Play Store).
 
 ```powershell
-git clone https://github.com/ahmetcaliskan55/su-takibi.git
-cd su-takibi
+git clone https://github.com/ahmetcaliskan55/yudumla.git
+cd yudumla
 git checkout claude/zen-newton-skpxky
-npm install
+npm ci
 npx expo start
 ```
 
 Telefon ve bilgisayar aynı Wi-Fi'deyse çıkan QR kodu Expo Go ile okutun. Ağ bağlantısı kurulamazsa `npx expo start --tunnel` deneyin.
+
+`npm ci` Windows'ta C++ derleme araçları gerektirmez (testler WebAssembly tabanlı `sql.js` kullanır).
 
 ## Komutlar
 
@@ -48,6 +52,7 @@ Telefon ve bilgisayar aynı Wi-Fi'deyse çıkan QR kodu Expo Go ile okutun. Ağ 
 - `src/db/` — SQLite arayüzü, migration'lar, depo katmanı
 - `src/state/` — veritabanı sağlayıcısı, `useToday`, servis
 - `src/components/`, `src/theme/` — B tasarımının bileşenleri, renkleri ve fontları
+- `docs/dependency-audit.md` — `npm audit` bulguları ve değerlendirmesi
 - `design/prototype.html` — tasarım prototipi (referans; değiştirilmez)
 
 ## Tasarım
