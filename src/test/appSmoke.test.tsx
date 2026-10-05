@@ -195,6 +195,23 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     fireEvent.changeText(sleep, '2300');
     expect(await screen.findByText(/08\.00 – 23\.00 arasında gelir/)).toBeTruthy();
 
+    // aralık (3 saat) uyanık süreden uzunsa hiç hatırlatma gelmez: kullanıcı uyarılır
+    expect(screen.queryByText('Bu saatlerde hiç hatırlatma gelmez')).toBeNull();
+    fireEvent.changeText(wake, '0002');
+    fireEvent.changeText(sleep, '0258');
+    expect(await screen.findByText('Bu saatlerde hiç hatırlatma gelmez')).toBeTruthy();
+    fireEvent.changeText(sleep, '0900');
+    await waitFor(() => expect(screen.queryByText('Bu saatlerde hiç hatırlatma gelmez')).toBeNull());
+    fireEvent.changeText(wake, '0800');
+    fireEvent.changeText(sleep, '2300');
+    expect(await screen.findByText(/08\.00 – 23\.00 arasında gelir/)).toBeTruthy();
+
+    // tanılama: gerçekten planlı sayı + test bildirimi
+    expect(await screen.findByText(/Planlı hatırlatma: \d+/)).toBeTruthy();
+    fireEvent.press(screen.getByText('Test bildirimi gönder'));
+    await waitFor(() => expect(driver.calls).toContain('test'));
+    expect(await screen.findByText(/Test bildirimi 5 saniye içinde gelecek/)).toBeTruthy();
+
     fireEvent.press(screen.getByText('Nazik'));
     expect(await screen.findByText('Sakin ve kısa hatırlatmalar; ton hep aynı kalır.')).toBeTruthy();
     fireEvent.press(screen.getByText('Mesaj örneklerini gör'));

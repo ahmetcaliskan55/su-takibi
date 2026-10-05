@@ -1,5 +1,5 @@
 import { MESSAGES } from './messages';
-import { awakeWindow, DEFAULT_MAX_SCHEDULED, planReminders, reminderBody, type PlanInput } from './reminders';
+import { awakeSpanMin, noReminderFits, awakeWindow, DEFAULT_MAX_SCHEDULED, planReminders, reminderBody, type PlanInput } from './reminders';
 
 const at = (d: string, h: number, m = 0) => {
   const [y, mo, da] = d.split('-').map(Number) as [number, number, number];
@@ -123,5 +123,25 @@ describe('reminderBody', () => {
     const b = reminderBody('komik', 1, at('2026-10-06', 10)); // (6+1)%2=1 → alternatif
     expect(a).toBe('Su molası! Saksı hazır, bardak nerede? 🌱');
     expect(b).toBe('Yudum molası! Toprağım hazır, sıra sende 🌱');
+  });
+});
+
+describe('awakeSpanMin / noReminderFits', () => {
+  it('uyanık süre gece yarısını aşsa da doğru', () => {
+    expect(awakeSpanMin(480, 1380)).toBe(900);
+    expect(awakeSpanMin(480, 60)).toBe(1020);
+    expect(awakeSpanMin(5, 180)).toBe(175);
+  });
+  it('aralık uyanık süreye eşit ya da ondan uzunsa hiç hatırlatma gelmez', () => {
+    expect(noReminderFits(2, 58, 60)).toBe(true); // 00:02–00:58, 1 saat
+    expect(noReminderFits(2, 62, 60)).toBe(true); // 00:02–01:02: ilk hatırlatma tam uyuma saatinde
+    expect(noReminderFits(2, 63, 60)).toBe(false);
+    expect(noReminderFits(5, 180, 60)).toBe(false);
+    expect(noReminderFits(480, 480, 60)).toBe(false); // aynı saat ayrı kuralla reddedilir
+  });
+  it('planlayıcı ile tutarlı: noReminderFits ise plan boş', () => {
+    const now = at('2026-10-05', 0, 0);
+    expect(reminders(planReminders(base({ now, settings: { wakeMin: 2, sleepMin: 62, intervalMin: 60 }, horizonDays: 1 })))).toHaveLength(0);
+    expect(reminders(planReminders(base({ now, settings: { wakeMin: 2, sleepMin: 63, intervalMin: 60 }, horizonDays: 1 })))).toHaveLength(1);
   });
 });

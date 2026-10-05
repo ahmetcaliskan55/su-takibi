@@ -70,6 +70,16 @@ export function awakeWindow(dateKey: string, wakeMin: number, sleepMin: number):
   return { start, end };
 }
 
+/** Uyanma → uyuma arası dakika (gece yarısını aşabilir). 0 değil, en çok 1439. */
+export function awakeSpanMin(wakeMin: number, sleepMin: number): number {
+  return (sleepMin - wakeMin + 1440) % 1440;
+}
+
+/** Aralık uyanık süreden uzun ya da ona eşitse hiçbir hatırlatma gelmez (ilk hatırlatma = uyanma + aralık, uyuma saatinde/sonrasında kalır). */
+export function noReminderFits(wakeMin: number, sleepMin: number, intervalMin: number): boolean {
+  return wakeMin !== sleepMin && awakeSpanMin(wakeMin, sleepMin) <= intervalMin;
+}
+
 /** Seviye `k` (1, 2, 3, …) için metin; 4'ten sonra son seviye. Alternatif metin gün ve seviyeye göre dönüşümlü. */
 export function reminderBody(tone: Tone, k: number, day: Date): string {
   const level = Math.min(Math.max(k, 1), MAX_LEVEL);

@@ -22,4 +22,8 @@ export interface NotificationDriver {
   /** Verilenleri planlar; planlanan sayıyı döndürür. */
   schedule(items: readonly PlannedReminder[]): Promise<number>;
   openSystemSettings(): Promise<void>;
+  /** Tanılama: işletim sisteminde gerçekten planlı olan hatırlatmaların sayısı ve en yakın zamanı. */
+  listScheduled(): Promise<{ count: number; next: Date | null }>;
+  /** Tanılama: birkaç saniye sonra tek bir deneme bildirimi gösterir (izin/kanal sorunlarını zamanlamadan ayırır). */
+  sendTest(seconds?: number): Promise<void>;
 }
