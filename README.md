@@ -4,19 +4,22 @@
 
 Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geliştirilen, günlük su tüketimini sanal bitki büyümesiyle takip eden mobil uygulama. Üyelik, sunucu, reklam ve analitik yoktur; veriler cihazdaki SQLite veritabanında tutulur ve uygulama internetsiz çalışır.
 
-## Mevcut durum: Aşama 2
+## Mevcut durum: Aşama 3
 
 Çalışanlar:
 
 - **Bugün ekranı:** 150 / 250 / 500 ml hızlı ekleme, toplam, kalan, yüzde, beş aşamalı bitki (tohum → filiz → yaprak → tomurcuk → çiçek), son kayıt.
+- **İlk kurulum (ilk açılışta bir kez):** tanışma, isteğe bağlı profil (yaş, kilo, aktivite), günlük hedef ve bardak miktarı, hatırlatma tercihleri (uyanma/uyuma saati gece yarısını aşabilir). Bildirim izni henüz istenmez; hatırlatmalar sonraki sürümde.
+- **Hedef ve profil ekranı:** Bugün ekranındaki hedefe ya da Ayarlar'a dokununca açılır; kendiliğinden kaydeder. Hedef değişimi yalnızca bugünü etkiler, önceki günlerin hedefi korunur.
+- **Gün değişimi:** Uygulama günlerce açılmasa da eksik günler önceki günün hedefiyle, 0 ml olarak oluşturulur.
 - **Su ekle paneli:** özel miktar (10–2.000 ml) ve içme saati; boş, geçersiz, negatif ve gelecekteki saat girişleri doğrulanır.
 - **Bugünkü kayıtlar:** saat ve miktarla liste; her kayıt düzenlenebilir ve silinebilir.
 - **Geri al:** ekleme, düzenleme ve silmeden sonra 7 saniyelik bildirim; yalnızca o son işlemi tersine çevirir. Veritabanı işlemi başarısız olursa başarı mesajı gösterilmez.
 - Yerel SQLite: şema + migration altyapısı, günün **hedef anlık görüntüsü** ve su kayıtları. Kayıtlar uygulama kapatılıp açılınca korunur.
 - Günler yerel takvim gününe göre ayrılır; uygulama öne gelince ve gece yarısında gün yeniden hesaplanır.
-- Alt gezinme (Bugün / Geçmiş / Ayarlar). Geçmiş ve Ayarlar şimdilik yalnızca "sonraki aşamada geliyor" yer tutucusudur.
+- Alt gezinme (Bugün / Geçmiş / Ayarlar). Geçmiş ve Ayarlar'ın geri kalanı şimdilik "sonraki aşamada geliyor" yer tutucusudur.
 
-Henüz yok: ilk kurulum, profil, geçmiş, ayarlar, bildirimler, tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
+Henüz yok: geçmiş, ayarlar, bildirimler, tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
 
 > **Günlük hedef (2.000 ml) yalnızca geliştirme varsayılanıdır.** Kişiye özel bir öneri veya tıbbi ihtiyaç değildir. Yaş/kilo/aktiviteye göre hedef önerisi, kaynakları değerlendirildikten sonra ayrı bir aşamada ele alınacaktır; doğrulanmamış formül kullanılmaz.
 

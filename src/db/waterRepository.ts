@@ -5,7 +5,8 @@ import {
   validateMinuteOfDay,
   type ValidationReason,
 } from '@/domain/water';
-import { createMutex } from './mutex';
+import { ensureDaysThrough } from './days';
+import { createMutex, type Mutex } from './mutex';
 import type { Db } from './types';
 
 export interface WaterLog {
@@ -81,16 +82,10 @@ export interface WaterRepository {
   restoreLog(log: WaterLog): Promise<void>;
 }
 
-export function createWaterRepository(db: Db): WaterRepository {
-  const exclusive = createMutex();
+/** `exclusive`: aynı bağlantıyı kullanan depolar arasında paylaşılan kilit (işlemler iç içe girmesin). */
+export function createWaterRepository(db: Db, exclusive: Mutex = createMutex()): WaterRepository {
 
-  async function ensureDay(localDate: string): Promise<void> {
-    await db.runAsync(
-      `INSERT OR IGNORE INTO days (local_date, goal_ml)
-       SELECT ?, daily_goal_ml FROM settings WHERE id = 1`,
-      [localDate],
-    );
-  }
+  const ensureDay = (localDate: string) => ensureDaysThrough(db, localDate);
 
   async function readDay(localDate: string): Promise<DaySummary> {
     const day = await db.getFirstAsync<{ goal_ml: number }>(
@@ -124,7 +119,7 @@ export function createWaterRepository(db: Db): WaterRepository {
     async loadDay(localDate) {
       requireDate(localDate);
       return exclusive(async () => {
-        await ensureDay(localDate);
+        await db.withTransactionAsync(() => ensureDay(localDate));
         return readDay(localDate);
       });
     },

@@ -1,19 +1,29 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { getAppDatabase } from '@/db/appDatabase';
+import { createMutex } from '@/db/mutex';
+import { createSettingsRepository, type SettingsRepository } from '@/db/settingsRepository';
 import { createWaterRepository, type WaterRepository } from '@/db/waterRepository';
 import { ErrorView, LoadingView } from '@/components/StatusViews';
 
-const RepositoryContext = createContext<WaterRepository | null>(null);
-
-export function useWaterRepository(): WaterRepository {
-  const repo = useContext(RepositoryContext);
-  if (!repo) throw new Error('useWaterRepository, DatabaseProvider dışında kullanıldı.');
-  return repo;
+interface Repositories {
+  water: WaterRepository;
+  settings: SettingsRepository;
 }
+
+const RepositoryContext = createContext<Repositories | null>(null);
+
+function useRepositories(): Repositories {
+  const repos = useContext(RepositoryContext);
+  if (!repos) throw new Error('Depo kancaları DatabaseProvider dışında kullanıldı.');
+  return repos;
+}
+
+export const useWaterRepository = (): WaterRepository => useRepositories().water;
+export const useSettingsRepository = (): SettingsRepository => useRepositories().settings;
 
 type GateState =
   | { status: 'loading' }
-  | { status: 'ready'; repo: WaterRepository }
+  | { status: 'ready'; repos: Repositories }
   | { status: 'error'; message: string };
 
 /** Veritabanı açılıp migration'lar uygulanana kadar çocukları göstermez; hata olursa yeniden deneme sunar. */
@@ -25,7 +35,10 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     getAppDatabase().then(
       (db) => {
-        if (!cancelled) setState({ status: 'ready', repo: createWaterRepository(db) });
+        if (cancelled) return;
+        // İki depo aynı kilidi paylaşır: işlemler iç içe girmez.
+        const exclusive = createMutex();
+        setState({ status: 'ready', repos: { water: createWaterRepository(db, exclusive), settings: createSettingsRepository(db, exclusive) } });
       },
       (e: unknown) => {
         if (!cancelled) setState({ status: 'error', message: e instanceof Error ? e.message : String(e) });
@@ -40,8 +53,8 @@ export function DatabaseProvider({ children }: { children: ReactNode }) {
     setState({ status: 'loading' });
     setAttempt((n) => n + 1);
   }, []);
-  const repo = state.status === 'ready' ? state.repo : null;
-  const value = useMemo(() => repo, [repo]);
+  const repos = state.status === 'ready' ? state.repos : null;
+  const value = useMemo(() => repos, [repos]);
 
   if (state.status === 'loading') return <LoadingView />;
   if (state.status === 'error') {

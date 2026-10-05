@@ -20,6 +20,23 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
   it('Bugün açılır, hızlı ekleme çalışır, çift dokunma tek kayıt üretir, sekmeler gezilir', async () => {
     renderRouter(path.resolve(__dirname, '../app'));
 
+    // İlk açılış: ilk kurulum (bildirim izni istenmez), hedef değişmeden bitirilir; bardak 330 ml seçilir.
+    expect(await screen.findByText('Her güne bir tohum')).toBeTruthy();
+    fireEvent.press(screen.getByText('Başlayalım'));
+    fireEvent.changeText(await screen.findByLabelText('Yaş'), '200');
+    fireEvent.press(screen.getByText('Devam'));
+    expect(await screen.findByText('Yaşı 1–120 arasında, rakamla gir.')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('Yaş'), '');
+    fireEvent.press(screen.getByText('Devam')); // boş bırakmak serbest
+    expect(await screen.findByText('Günlük hedefin')).toBeTruthy();
+    fireEvent.press(screen.getByText('330'));
+    fireEvent.press(screen.getByText('Devam'));
+    fireEvent.changeText(await screen.findByLabelText('Uyuma saati'), '0800');
+    fireEvent.press(screen.getByText('Başla'));
+    expect(await screen.findByText('Uyanma ve uyuma saati aynı olamaz.')).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('Uyuma saati'), '0100'); // gece yarısını aşan aralık geçerli
+    fireEvent.press(screen.getByText('Başla'));
+
     expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
     expect(screen.getByText('Bugün henüz kayıt yok')).toBeTruthy();
     expect(screen.getByText('Kalan 2.000 ml')).toBeTruthy();
@@ -35,7 +52,7 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(await screen.findByText('Geçmiş sonraki aşamada geliyor')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
-    expect(await screen.findByText('Ayarlar sonraki aşamalarda geliyor')).toBeTruthy();
+    expect(await screen.findByText('Diğer ayarlar sonraki aşamalarda geliyor')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('tab', { name: 'Bugün' }));
     expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
@@ -49,6 +66,7 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
 
     fireEvent.press(screen.getByText('Su ekle'));
     const amount = await screen.findByLabelText('Özel miktar, mililitre');
+    expect(amount.props.value).toBe('330'); // ilk kurulumda seçilen bardak miktarı hazır gelir
     const time = screen.getByLabelText('İçme saati, saat ve dakika');
 
     fireEvent.changeText(amount, '');
@@ -80,6 +98,27 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     fireEvent.press(screen.getByLabelText('Kayıt silindi. Geri al'));
     expect(await screen.findByText('Toplam 550 ml · 2 kayıt')).toBeTruthy();
     expect(screen.queryByText('Kayıt silindi')).toBeNull();
+  });
+
+  it('hedef değişince bugünün hedefi güncellenir; profil geçersiz yaşı kaydetmez', async () => {
+    renderRouter(path.resolve(__dirname, '../app'));
+    expect(await screen.findByText('Kalan 1.450 ml')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Günlük hedefi düzenle'));
+    expect(await screen.findByText('Hedef ve profil')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Hedefi 100 ml artır'));
+    expect(await screen.findByLabelText('Günlük hedef 2.100 mililitre')).toBeTruthy();
+
+    const age = screen.getByLabelText('Yaş');
+    fireEvent.changeText(age, '150');
+    fireEvent(age, 'endEditing');
+    expect(await screen.findByText('Yaşı 1–120 arasında, rakamla gir.')).toBeTruthy();
+    fireEvent.changeText(age, '22');
+    fireEvent(age, 'endEditing');
+    await waitFor(() => expect(screen.queryByText('Yaşı 1–120 arasında, rakamla gir.')).toBeNull());
+
+    fireEvent.press(screen.getByLabelText('Geri'));
+    expect(await screen.findByText('Kalan 1.550 ml')).toBeTruthy();
   });
 });
 

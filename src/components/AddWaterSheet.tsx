@@ -16,6 +16,8 @@ interface Props {
   /** Düzenlenen kayıt; yoksa yeni kayıt. */
   editing: WaterLog | null;
   now: Date;
+  /** Yeni kayıtta hazır gelen miktar (ayarlardaki bardak miktarı). */
+  defaultAmountMl?: number;
   saving: boolean;
   onSubmit: (input: LogInput) => Promise<ActionResult>;
   onDelete?: () => void;
@@ -24,8 +26,8 @@ interface Props {
 }
 
 /** Özel miktar ve saatle su ekleme / kayıt düzenleme paneli. */
-export function AddWaterSheet({ editing, now, saving, onSubmit, onDelete, onClose, overlay }: Props) {
-  const [amountText, setAmountText] = useState(editing ? String(editing.amountMl) : '250');
+export function AddWaterSheet({ editing, now, defaultAmountMl = 250, saving, onSubmit, onDelete, onClose, overlay }: Props) {
+  const [amountText, setAmountText] = useState(editing ? String(editing.amountMl) : String(defaultAmountMl));
   const [timeText, setTimeText] = useState(formatTimeInput(editing ? editing.minuteOfDay : minuteOfDay(now)));
   const [error, setError] = useState<{ field: FormField | null; message: string } | null>(null);
 

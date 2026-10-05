@@ -6,7 +6,7 @@ import { QUICK_AMOUNTS_ML } from '@/domain/water';
 import type { DaySummary } from '@/db/waterRepository';
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';
-import { ChevronIcon, ClockIcon, PlusIcon } from './icons';
+import { ChevronIcon, ClockIcon, PencilIcon, PlusIcon } from './icons';
 import { DisplayText } from './DisplayText';
 import { DropIcon } from './DropIcon';
 import { Plant } from './Plant';
@@ -21,12 +21,13 @@ interface Props {
   onQuickAdd: (amountMl: number) => void;
   onOpenAdd: () => void;
   onOpenRecords: () => void;
+  onOpenProfile: () => void;
 }
 
 const QUICK_ICON_SIZES: Record<number, [number, number]> = { 150: [12, 15], 250: [15, 18], 500: [18, 22] };
 const STAGE_DROPS = ['Filiz', 'Yaprak', 'Tomurcuk', 'Çiçek'] as const;
 
-export function HomeContent({ day, now, saving, actionError, bubbleEvent, onQuickAdd, onOpenAdd, onOpenRecords }: Props) {
+export function HomeContent({ day, now, saving, actionError, bubbleEvent, onQuickAdd, onOpenAdd, onOpenRecords, onOpenProfile }: Props) {
   const { width } = useWindowDimensions();
   const cardWidth = width - 40;
   const plantWidth = Math.min(216, Math.round(cardWidth * 0.6));
@@ -61,17 +62,20 @@ export function HomeContent({ day, now, saving, actionError, bubbleEvent, onQuic
           <Text style={styles.bubbleText}>{bubbleText(bubbleEvent, stage, totalMl)}</Text>
         </View>
 
-        <View style={[styles.totals, { width: sideWidth }]}>
+        <Pressable onPress={onOpenProfile} accessibilityRole="button" accessibilityLabel="Günlük hedefi düzenle" style={[styles.totals, { width: sideWidth }]}>
           <DisplayText variant="number" style={styles.totalNumber} accessibilityLabel={`${formatMl(totalMl)} mililitre içildi`}>
             {formatMl(totalMl)}
           </DisplayText>
-          <Text style={styles.goalText}>/ {formatMl(goalMl)} ml</Text>
+          <View style={styles.goalRow}>
+            <Text style={styles.goalText}>/ {formatMl(goalMl)} ml</Text>
+            <PencilIcon color={colors.greenText} />
+          </View>
           <View style={styles.remainPill}>
             <Text style={styles.remainText}>
               {done ? 'Hedef tamam' : `Kalan ${formatMl(remainingMl(totalMl, goalMl))} ml`}
             </Text>
           </View>
-        </View>
+        </Pressable>
       </View>
 
       <View
@@ -191,6 +195,7 @@ const styles = StyleSheet.create({
   bubbleText: { fontFamily: fonts.bodyHeavy, fontSize: 14, lineHeight: 18, color: colors.ink },
   totals: { position: 'absolute', right: 14, bottom: 16, alignItems: 'flex-start', gap: 4 },
   totalNumber: { fontSize: 40, lineHeight: 44 },
+  goalRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   goalText: { fontFamily: fonts.bodyBold, fontSize: 15, color: colors.greenText },
   remainPill: { marginTop: 4, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 15, backgroundColor: colors.white },
   remainText: { fontFamily: fonts.bodyHeavy, fontSize: 13, color: colors.ink },
