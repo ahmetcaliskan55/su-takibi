@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Card, Chips, ErrorText, Field, Label, LinkRow, Note, PrimaryButton, Toggle } from '@/components/form';
 import { GlassSheet, MessagesSheet } from '@/components/SettingsSheets';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -31,6 +32,8 @@ export default function SettingsScreen() {
   const [sheet, setSheet] = useState<'glass' | 'messages' | null>(null);
   const [schedule, setSchedule] = useState<{ count: number; next: Date | null } | null>(null);
   const [testMsg, setTestMsg] = useState<string | null>(null);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [wiping, setWiping] = useState(false);
 
   // Tanılama: işletim sisteminde GERÇEKTEN kaç hatırlatma planlı (eşitleme bitsin diye kısa bir gecikmeyle).
   useEffect(() => {
@@ -110,6 +113,26 @@ export default function SettingsScreen() {
   // Not, yazılan geçerli değerlerle anında güncellenir; geçersizken kayıtlı değerleri gösterir.
   const typed = parseWakeSleep(wakeText, sleepText);
   const windowNote = typed.ok ? reminderWindowText(typed.value.wakeMin, typed.value.sleepMin) : reminderWindowText(settings.wakeMin, settings.sleepMin);
+
+  /** Tüm veriyi siler; başarısızsa hiçbir şey silinmez. Başarılıysa bildirimler iptal edilir ve uygulama ilk kuruluma döner. */
+  const wipeAll = async () => {
+    setWiping(true);
+    setError(null);
+    try {
+      await repo.eraseAllData();
+    } catch {
+      setConfirmWipe(false);
+      setWiping(false);
+      setError('Veriler silinemedi. Hiçbir şey silinmedi; biraz sonra tekrar dene.');
+      return;
+    }
+    try {
+      await driver.cancelAll();
+    } catch {
+      // Ayarlar sıfırlandığı için hatırlatma eşitlemesi bunu bir sonraki tetikleyicide yeniden dener.
+    }
+    await reload(); // ilk kurulum yeniden gösterilir
+  };
 
   const sendTest = async () => {
     setTestMsg(null);
@@ -213,11 +236,26 @@ export default function SettingsScreen() {
         <Card>
           <Text style={styles.cardTitle}>Gizlilik</Text>
           <Note>Verilerin yalnızca bu telefonda tutulur. Hesap açmana gerek yok, uygulama internetsiz çalışır.</Note>
+          <Pressable onPress={() => setConfirmWipe(true)} accessibilityRole="button" style={styles.wipe}>
+            <Text style={styles.wipeText}>Tüm verilerimi sil</Text>
+          </Pressable>
         </Card>
         <Note>Hatırlatmalar bu telefonda planlanır ve internet gerektirmez. Uygulamayı birkaç gün hiç açmazsan hatırlatmalar durur; açınca yeniden başlar.</Note>
-        <Note>Değişiklikler kendiliğinden kaydedilir. Tüm verileri silme sonraki sürümde gelecek.</Note>
+        <Note>Değişiklikler kendiliğinden kaydedilir.</Note>
       </ScrollView>
 
+      {confirmWipe ? (
+        <ConfirmDialog
+          title="Tüm veriler silinsin mi?"
+          body="Su kayıtların, geçmişteki bitkilerin, profilin ve ayarların bu telefondan kalıcı olarak silinir. Planlı hatırlatmalar da iptal edilir. Bu işlem geri alınamaz; uygulama ilk kuruluma döner."
+          confirmLabel="Evet, hepsini sil"
+          cancelLabel="Vazgeç"
+          destructive
+          busy={wiping}
+          onConfirm={() => void wipeAll()}
+          onCancel={() => setConfirmWipe(false)}
+        />
+      ) : null}
       {sheet === 'glass' ? <GlassSheet glassMl={settings.glassMl} onSave={saveGlass} onClose={() => setSheet(null)} /> : null}
       {sheet === 'messages' ? <MessagesSheet tone={settings.tone} intervalMin={settings.intervalMin} label={MESSAGES[settings.tone].label} onClose={() => setSheet(null)} /> : null}
     </View>
@@ -227,6 +265,8 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   body: { padding: 20, gap: 12 },
+  wipe: { height: 48, borderRadius: 16, borderWidth: 2, borderColor: colors.error, alignItems: 'center', justifyContent: 'center' },
+  wipeText: { fontFamily: fonts.bodyHeavy, fontSize: 15, color: colors.error },
   warnTitle: { fontFamily: fonts.bodyHeavy, fontSize: 15, color: colors.peachInk },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardTitle: { fontFamily: fonts.bodyHeavy, fontSize: 15, color: colors.ink },

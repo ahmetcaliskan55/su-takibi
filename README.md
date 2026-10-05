@@ -4,7 +4,7 @@
 
 Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geliştirilen, günlük su tüketimini sanal bitki büyümesiyle takip eden mobil uygulama. Üyelik, sunucu, reklam ve analitik yoktur; veriler cihazdaki SQLite veritabanında tutulur ve uygulama internetsiz çalışır.
 
-## Mevcut durum: Aşama 6
+## Mevcut durum: Aşama 7
 
 Çalışanlar:
 
@@ -14,6 +14,7 @@ Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geli�
 - **Geçmiş:** 5 haftalık takvim (Pazartesi başlar; hücrede o günün bitkisi ve yüzdesi, gün ayrıntısı salt okunur) ve son 7/30 gün istatistiği (günlük ortalama, hedef tamam sayısı, çubuk grafik, her günün kendi hedef çizgisi). Bitki ve yüzde, o günün dondurulmuş hedefine göre hesaplanır.
 - **Ayarlar:** hedef ve profil, bardak/şişe miktarı (hazır ya da 50–2.000 ml özel), hatırlatma açma/kapama, hatırlatma aralığı (1–4 saat), uyanma/uyuma saati (gece yarısını aşan aralık dahil), mesaj tarzı (Nazik / Komik; Bugün ekranındaki balon da buna uyar) ve mesaj örnekleri. Değişiklikler kendiliğinden kaydedilir. 
 - **Yerel hatırlatmalar:** uyanık saatlerde, son kayıttan itibaren her aralıkta; seviye 1 → 4 (komik/nazik mesajlar). Su kaydı gelince sayaç sıfırlanır, hedef tamamlanınca bugünün hatırlatmaları durur. Ayar/hedef/kayıt değişince plan yenilenir. Bildirim izni reddedilirse uygulama yine kullanılır. Ayrıntı ve platform sınırları: `docs/notifications.md`.
+- **Tüm verilerimi sil (Ayarlar → Gizlilik):** onay penceresiyle kayıtları, günleri, profili ve ayarları siler; planlı bildirimleri iptal eder; uygulama ilk kuruluma döner. Tek işlemde yapılır, hata olursa hiçbir şey silinmez.
 - **Gün değişimi:** Uygulama günlerce açılmasa da eksik günler önceki günün hedefiyle, 0 ml olarak oluşturulur.
 - **Su ekle paneli:** özel miktar (10–2.000 ml) ve içme saati; boş, geçersiz, negatif ve gelecekteki saat girişleri doğrulanır.
 - **Bugünkü kayıtlar:** saat ve miktarla liste; her kayıt düzenlenebilir ve silinebilir.
@@ -22,7 +23,7 @@ Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geli�
 - Günler yerel takvim gününe göre ayrılır; uygulama öne gelince ve gece yarısında gün yeniden hesaplanır.
 - Alt gezinme: Bugün / Geçmiş / Ayarlar.
 
-Henüz yok: tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
+Henüz yok: geçmiş güne kayıt ekleme/düzenleme, hedef önerisi (kaynaklar değerlendirilince), iOS.
 
 > **Günlük hedef (2.000 ml) yalnızca geliştirme varsayılanıdır.** Kişiye özel bir öneri veya tıbbi ihtiyaç değildir. Yaş/kilo/aktiviteye göre hedef önerisi, kaynakları değerlendirildikten sonra ayrı bir aşamada ele alınacaktır; doğrulanmamış formül kullanılmaz.
 
@@ -72,3 +73,17 @@ Seçilen tasarım **B — Sevimli Günlük Saksı**: krem ve yeşil renkler, yuv
 - Uygulama adı **Yudumla**. Mağaza adı ve paket kimliği (Android `applicationId` / iOS bundle id) yayın aşamasından önce kesinleştirilecek.
 - Uygulama simgeleri Expo şablonundan gelen geçici yer tutuculardır.
 - Kişisel kayıtları, yerel veritabanlarını ve gizli anahtarları repoya eklemeyin.
+
+## APK üretme (EAS Build)
+
+`eas.json` iki profil içerir:
+
+| Profil | Ne için | Komut |
+| --- | --- | --- |
+| `development` | Geliştirme sürümü (`npx expo start --dev-client` ile bilgisayara bağlanır; bildirim testi) | `npx eas-cli build --profile development --platform android` |
+| `preview` | Bağımsız, kendi başına çalışan APK (bilgisayarsız ve internetsiz). Yalnızca `arm64-v8a` derlenir; APK daha küçük olur | `npx eas-cli build --profile preview --platform android` |
+
+- Paket kimliği: `com.ahmetcaliskan55.yudumla`. **Yayından sonra değiştirmeyin**; değişirse Android bunu başka uygulama sayar ve veriler kaybolur.
+- Aynı imza anahtarıyla üretilen APK'lar birbirinin üzerine kurulur ve veriler korunur (EAS anahtarı saklar).
+- Güncellemelerin üzerine kurulabilmesi için her yeni APK'da `app.json` içindeki `android.versionCode` artırılmalıdır (şu an varsayılan 1).
+- Derleme ücretsiz hesapta sıraya girebilir; sayfasından izlenir.

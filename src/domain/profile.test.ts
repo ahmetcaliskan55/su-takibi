@@ -37,9 +37,9 @@ describe('parseWakeSleep', () => {
 
 describe('reminderWindowText', () => {
   it('hatırlatma aralığı uyanma → uyuma, sessiz aralık uyuma → uyanma; seçime göre değişir', () => {
-    expect(reminderWindowText(480, 60)).toBe('Hatırlatmalar 08.00 – 01.00 arasında gelir (gece yarısını aşar). 01.00 – 08.00 arasında sessiz kalır.');
-    expect(reminderWindowText(480, 1380)).toBe('Hatırlatmalar 08.00 – 23.00 arasında gelir. 23.00 – 08.00 arasında sessiz kalır.');
-    expect(reminderWindowText(480, 1320)).toBe('Hatırlatmalar 08.00 – 22.00 arasında gelir. 22.00 – 08.00 arasında sessiz kalır.');
-    expect(reminderWindowText(780, 120)).toBe('Hatırlatmalar 13.00 – 02.00 arasında gelir (gece yarısını aşar). 02.00 – 13.00 arasında sessiz kalır.');
+    expect(reminderWindowText(480, 60)).toBe('Hatırlatmalar 08.00 – 01.00 arasında gelir (gece yarısını aşar). 01.00 – 08.00 arasında bildirim gelmez.');
+    expect(reminderWindowText(480, 1380)).toBe('Hatırlatmalar 08.00 – 23.00 arasında gelir. 23.00 – 08.00 arasında bildirim gelmez.');
+    expect(reminderWindowText(480, 1320)).toBe('Hatırlatmalar 08.00 – 22.00 arasında gelir. 22.00 – 08.00 arasında bildirim gelmez.');
+    expect(reminderWindowText(780, 120)).toBe('Hatırlatmalar 13.00 – 02.00 arasında gelir (gece yarısını aşar). 02.00 – 13.00 arasında bildirim gelmez.');
   });
 });
