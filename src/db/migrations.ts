@@ -14,6 +14,7 @@ export interface Migration {
  * - `days.goal_ml`: o günün hedef anlık görüntüsü. Sonradan hedef değişse de geçmiş günler değişmez.
  * - `water_logs.local_date`: yerel takvim günü (`YYYY-MM-DD`). Kayıt saati "günün dakikası" olarak tutulur;
  *   saat dilimi değişse de kayıt kendi gününde kalır.
+ * - `settings.onboarding_done`: mevcut kullanıcılar için de 0 başlar; ilk kurulum bir kez gösterilir, veriler korunur.
  * - `water_logs.created_at`: UTC epoch ms (denetim amaçlı; gün hesabında kullanılmaz).
  */
 export const MIGRATIONS: readonly Migration[] = [
@@ -41,6 +42,27 @@ export const MIGRATIONS: readonly Migration[] = [
         created_at INTEGER NOT NULL
       );
       CREATE INDEX idx_water_logs_day ON water_logs (local_date, minute_of_day, id);
+    `,
+  },
+  {
+    version: 2,
+    description: 'profile and settings columns (onboarding, glass, reminder preferences)',
+    sql: `
+      ALTER TABLE settings ADD COLUMN glass_ml INTEGER NOT NULL DEFAULT 250 CHECK (glass_ml BETWEEN 50 AND 2000);
+      ALTER TABLE settings ADD COLUMN reminders_enabled INTEGER NOT NULL DEFAULT 1 CHECK (reminders_enabled IN (0, 1));
+      ALTER TABLE settings ADD COLUMN interval_min INTEGER NOT NULL DEFAULT 120 CHECK (interval_min BETWEEN 30 AND 720);
+      ALTER TABLE settings ADD COLUMN wake_min INTEGER NOT NULL DEFAULT 480 CHECK (wake_min BETWEEN 0 AND 1439);
+      ALTER TABLE settings ADD COLUMN sleep_min INTEGER NOT NULL DEFAULT 1380 CHECK (sleep_min BETWEEN 0 AND 1439);
+      ALTER TABLE settings ADD COLUMN tone TEXT NOT NULL DEFAULT 'komik' CHECK (tone IN ('komik', 'nazik'));
+      ALTER TABLE settings ADD COLUMN onboarding_done INTEGER NOT NULL DEFAULT 0 CHECK (onboarding_done IN (0, 1));
+
+      CREATE TABLE profile (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        age INTEGER CHECK (age IS NULL OR age BETWEEN 1 AND 120),
+        weight_kg INTEGER CHECK (weight_kg IS NULL OR weight_kg BETWEEN 20 AND 300),
+        activity TEXT CHECK (activity IS NULL OR activity IN ('az', 'orta', 'cok'))
+      );
+      INSERT INTO profile (id) VALUES (1);
     `,
   },
 ];

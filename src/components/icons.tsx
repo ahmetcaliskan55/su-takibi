@@ -61,3 +61,11 @@ export function ChevronIcon({ size = 14, color }: IconProps) {
     </Svg>
   );
 }
+
+export function PencilIcon({ size = 14, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M4 20h4L19 9l-4-4L4 16v4z" {...stroke(color, 2.4)} />
+    </Svg>
+  );
+}

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AddWaterSheet } from '@/components/AddWaterSheet';
 import { HomeContent } from '@/components/HomeContent';
@@ -6,13 +7,23 @@ import { RecordsSheet } from '@/components/RecordsSheet';
 import { ErrorView, LoadingView } from '@/components/StatusViews';
 import { UndoToast } from '@/components/UndoToast';
 import { useWaterRepository } from '@/state/DatabaseProvider';
+import { useSettings } from '@/state/SettingsProvider';
 import { useToday } from '@/state/useToday';
 
 type Sheet = { kind: 'add'; editId: number | null; from: 'records' | null } | { kind: 'records' } | null;
 
 export default function TodayScreen() {
   const repo = useWaterRepository();
+  const router = useRouter();
+  const { settings } = useSettings();
   const t = useToday(repo);
+  const refresh = t.retry;
+  // Profil ekranından dönünce (hedef değişmiş olabilir) bugünü yeniden oku.
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
   const [sheet, setSheet] = useState<Sheet>(null);
 
   if (t.state.status === 'loading') return <LoadingView label="Bugün yükleniyor…" />;
@@ -44,6 +55,7 @@ export default function TodayScreen() {
           t.clearActionError();
           setSheet({ kind: 'add', editId: null, from: null });
         }}
+        onOpenProfile={() => router.push('/profile')}
         onOpenRecords={() => {
           t.clearActionError();
           setSheet({ kind: 'records' });
@@ -71,6 +83,7 @@ export default function TodayScreen() {
             key={`${sheet.editId ?? 'new'}`}
             editing={editing}
             now={now}
+            defaultAmountMl={settings.glassMl}
             saving={t.saving}
             overlay={toastNode()}
             onClose={() => afterAction(sheet.from)}

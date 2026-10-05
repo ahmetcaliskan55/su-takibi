@@ -18,7 +18,7 @@ function render(d: DaySummary, props: Partial<Parameters<typeof HomeContent>[0]>
   let renderer!: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <HomeContent day={d} now={NOW} saving={false} actionError={null} onOpenAdd={jest.fn()} onOpenRecords={jest.fn()} bubbleEvent="idle" onQuickAdd={onQuickAdd} {...props} />,
+      <HomeContent day={d} now={NOW} saving={false} actionError={null} onOpenAdd={jest.fn()} onOpenRecords={jest.fn()} onOpenProfile={jest.fn()} bubbleEvent="idle" onQuickAdd={onQuickAdd} {...props} />,
     );
   });
   return { root: renderer.root, onQuickAdd };
@@ -75,6 +75,13 @@ describe('HomeContent', () => {
     act(() => root.findByProps({ accessibilityLabel: 'Bugünkü kayıtları göster' }).props.onPress());
     expect(onOpenAdd).toHaveBeenCalledTimes(1);
     expect(onOpenRecords).toHaveBeenCalledTimes(1);
+  });
+
+  it('hedef alanı profil ekranını açar', () => {
+    const onOpenProfile = jest.fn();
+    const { root } = render(day(0), { onOpenProfile });
+    act(() => root.findByProps({ accessibilityLabel: 'Günlük hedefi düzenle' }).props.onPress());
+    expect(onOpenProfile).toHaveBeenCalledTimes(1);
   });
 
   it.each([

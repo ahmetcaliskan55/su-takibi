@@ -52,6 +52,13 @@ export function isValidDateKey(key: unknown): key is string {
   return probe.getFullYear() === y && probe.getMonth() === mo - 1 && probe.getDate() === d;
 }
 
+/** Bir sonraki takvim günü (`2026-10-31` → `2026-11-01`). Geçersiz anahtarda hata verir. */
+export function nextDateKey(key: string): string {
+  if (!isValidDateKey(key)) throw new Error(`Geçersiz gün anahtarı: ${key}`);
+  const [y, m, d] = key.split('-').map(Number) as [number, number, number];
+  return toLocalDateKey(new Date(y, m - 1, d + 1));
+}
+
 /** Günün dakikası: 00:00 → 0, 23:59 → 1439. */
 export function minuteOfDay(date: Date): number {
   return date.getHours() * 60 + date.getMinutes();
