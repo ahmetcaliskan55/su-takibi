@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { formatMl, msUntilNextLocalMidnight } from '@/domain/date';
 import { FORM_MESSAGES } from '@/domain/logForm';
 import { plantStage } from '@/domain/plant';
+import { requestReminderSync } from '@/notifications/events';
 import { createTapGuard, QUICK_ADD_COOLDOWN_MS } from '@/domain/tapGuard';
 import type { BubbleEvent } from '@/domain/messages';
 import { LogNotFoundError, type DaySummary, type WaterRepository } from '@/db/waterRepository';
@@ -169,6 +170,7 @@ export function useToday(repo: WaterRepository) {
           });
           // Başarı bildirimi yalnızca yazma VE yeniden okuma başarılıysa gösterilir.
           showToast(after.localDate, done.message, done.action);
+          requestReminderSync(); // su kaydı değişti: hatırlatma planı yenilenir (seviye sıfırlanır, hedef tamamsa bugün susar)
         }
         return { ok: true };
       } catch (e) {
@@ -233,6 +235,7 @@ export function useToday(repo: WaterRepository) {
       try {
         await undoWater(repo, current.action);
         await refresh();
+        requestReminderSync();
         setBubble((b) => ({ ...b, localDate: current.localDate, event: 'edited' }));
         return { ok: true };
       } catch (e) {

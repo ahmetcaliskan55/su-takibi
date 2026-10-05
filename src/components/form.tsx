@@ -5,8 +5,9 @@ import { fonts } from '@/theme/fonts';
 import { DisplayText } from './DisplayText';
 import { ChevronIcon } from './icons';
 
-export function Card({ children, tone = 'white' }: { children: ReactNode; tone?: 'white' | 'green' }) {
-  return <View style={[styles.card, tone === 'green' && { backgroundColor: colors.greenLight }]}>{children}</View>;
+export function Card({ children, tone = 'white' }: { children: ReactNode; tone?: 'white' | 'green' | 'peach' }) {
+  const bg = tone === 'green' ? colors.greenLight : tone === 'peach' ? colors.peach : undefined;
+  return <View style={[styles.card, bg ? { backgroundColor: bg } : null]}>{children}</View>;
 }
 
 export function Label({ children }: { children: string }) {

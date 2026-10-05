@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { formatMl } from '@/domain/date';
 import { messageRows } from '@/domain/messages';
 import { GLASS_OPTIONS_ML, parseGlassAmount, type Tone } from '@/domain/profile';
 import { colors } from '@/theme/colors';
 import { fonts } from '@/theme/fonts';
-import { Card, Chips, ErrorText, Field, Note, PrimaryButton } from './form';
+import { Card, Chips, ErrorText, Field, Label, Note } from './form';
 import { Sheet } from './Sheet';
 
 interface GlassProps {
@@ -26,20 +26,31 @@ export function GlassSheet({ glassMl, onSave, onClose }: GlassProps) {
     else onClose();
   };
 
+  const apply = () => {
+    const parsed = parseGlassAmount(draft);
+    if (!parsed.ok) return setError(parsed.message);
+    void save(parsed.value);
+  };
+
   return (
     <Sheet title="Bardak / şişe miktarı" onClose={onClose}>
+      <View style={styles.current} accessibilityLabel={`Şu an seçili: ${formatMl(glassMl)} mililitre`}>
+        <Text style={styles.currentLabel}>Şu an seçili</Text>
+        <Text style={styles.currentValue}>{`${formatMl(glassMl)} ml`}</Text>
+      </View>
+
+      <Label>Hazır miktarlar (ml)</Label>
       <Chips label="Bardak miktarı" options={GLASS_OPTIONS_ML.map((v) => ({ value: v, label: String(v) }))} selected={GLASS_OPTIONS_ML.some((v) => v === glassMl) ? glassMl : null} onSelect={(v) => void save(v)} />
-      <Field label="Özel miktar (ml)" value={draft} onChangeText={(t) => (setDraft(t.replace(/\D/g, '').slice(0, 4)), setError(null))} keyboardType="number-pad" maxLength={4} bad={!!error} placeholder="ör. 400" />
+
+      <Label>Ya da kendi miktarını yaz</Label>
+      <View style={styles.customRow}>
+        <Field label="Özel miktar (ml)" value={draft} onChangeText={(t) => (setDraft(t.replace(/\D/g, '').slice(0, 4)), setError(null))} onSubmitEditing={apply} keyboardType="number-pad" maxLength={4} bad={!!error} />
+        <Pressable onPress={apply} accessibilityRole="button" style={styles.apply}>
+          <Text style={styles.applyText}>Uygula</Text>
+        </Pressable>
+      </View>
       {error ? <ErrorText>{error}</ErrorText> : null}
-      <Note>{`Şu an seçili: ${formatMl(glassMl)} ml. Su ekle panelinde bu miktar hazır seçili gelir.`}</Note>
-      <PrimaryButton
-        label="Uygula"
-        onPress={() => {
-          const parsed = parseGlassAmount(draft);
-          if (!parsed.ok) return setError(parsed.message);
-          void save(parsed.value);
-        }}
-      />
+      <Note>Su ekle panelinde bu miktar hazır seçili gelir.</Note>
     </Sheet>
   );
 }
@@ -67,6 +78,12 @@ export function MessagesSheet({ tone, intervalMin, label, onClose }: { tone: Ton
 }
 
 const styles = StyleSheet.create({
+  current: { paddingVertical: 12, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.greenLight, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  currentLabel: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.greenText },
+  currentValue: { fontFamily: fonts.bodyHeavy, fontSize: 20, color: colors.greenDark },
+  customRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  apply: { height: 52, paddingHorizontal: 22, borderRadius: 16, backgroundColor: colors.green, alignItems: 'center', justifyContent: 'center' },
+  applyText: { fontFamily: fonts.bodyHeavy, fontSize: 16, color: colors.white },
   intro: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.inkSoft },
   list: { flexGrow: 0 },
   listContent: { gap: 8, paddingBottom: 6 },

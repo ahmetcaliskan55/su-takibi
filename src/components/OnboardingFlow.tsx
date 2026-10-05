@@ -28,8 +28,8 @@ import { Plant } from './Plant';
 const STEPS = 4;
 const SAVE_FAILED = 'Kaydedilemedi. Biraz sonra tekrar dene.';
 
-/** İlk kurulum: tanışma → profil (isteğe bağlı) → hedef ve bardak → hatırlatma tercihleri. Bildirim izni burada İSTENMEZ. */
-export function OnboardingFlow({ repo, onDone }: { repo: SettingsRepository; onDone: () => void }) {
+/** İlk kurulum: tanışma → profil (isteğe bağlı) → hedef ve bardak → hatırlatma tercihleri ve bildirim izni (reddedilirse uygulama yine kullanılır). */
+export function OnboardingFlow({ repo, onDone, onRequestPermission }: { repo: SettingsRepository; onDone: () => void; onRequestPermission: () => Promise<unknown> }) {
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [ageText, setAgeText] = useState('');
@@ -41,7 +41,6 @@ export function OnboardingFlow({ repo, onDone }: { repo: SettingsRepository; onD
   const [sleepText, setSleepText] = useState('23:00');
   const [intervalMin, setIntervalMin] = useState<number>(DEFAULT_INTERVAL_MIN);
   const [tone, setTone] = useState<Tone>('komik');
-  const [remindersOn, setRemindersOn] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -60,7 +59,8 @@ export function OnboardingFlow({ repo, onDone }: { repo: SettingsRepository; onD
     go(step + 1);
   };
 
-  const finish = async () => {
+  /** `allow`: hatırlatmalar açık kaydedilir ve işletim sisteminin bildirim izni istenir; değilse hatırlatmalar kapalı kaydedilir. */
+  const finish = async (allow: boolean) => {
     const times = parseWakeSleep(wakeText, sleepText);
     if (!times.ok) return setError(times.message);
     const age = parseAge(ageText);
@@ -73,9 +73,10 @@ export function OnboardingFlow({ repo, onDone }: { repo: SettingsRepository; onD
         goalMl: goal,
         glassMl: glass,
         profile: { age: age.value, weightKg: weight.value, activity },
-        reminders: { remindersEnabled: remindersOn, intervalMin, tone, ...times.value },
+        reminders: { remindersEnabled: allow, intervalMin, tone, ...times.value },
         todayKey: toLocalDateKey(new Date()),
       });
+      if (allow) await onRequestPermission().catch(() => undefined); // izin reddedilse de kurulum biter
       onDone();
     } catch {
       setError(SAVE_FAILED); // başarı ilerlemesi yok: kurulum tamamlanmış sayılmaz
@@ -159,18 +160,9 @@ export function OnboardingFlow({ repo, onDone }: { repo: SettingsRepository; onD
               Hatırlatma tercihlerin
             </DisplayText>
             <Card tone="green">
-              <Note>Hatırlatmalar sonraki sürümde devreye girecek. Tercihlerini şimdiden kaydedebilirsin; bildirim izni o zaman istenecek.</Note>
+              <Note>Su molalarını hatırlatabilmek için birazdan telefonun bildirim izni soracak. Bildirimler bu telefonda oluşturulur; uyku saatlerinde ve günlük hedefin tamamlanınca gelmez.</Note>
             </Card>
             <Card>
-              <Chips
-                label="Hatırlatmalar"
-                options={[
-                  { value: 'on', label: 'Açık' },
-                  { value: 'off', label: 'Kapalı' },
-                ]}
-                selected={remindersOn ? 'on' : 'off'}
-                onSelect={(v) => setRemindersOn(v === 'on')}
-              />
               <View style={styles.row}>
                 <Field label="Uyanma saati" value={wakeText} onChangeText={(t) => (setWakeText(maskTimeInput(t)), setError(null))} keyboardType="number-pad" maxLength={5} placeholder="08:00" />
                 <Field label="Uyuma saati" value={sleepText} onChangeText={(t) => (setSleepText(maskTimeInput(t)), setError(null))} keyboardType="number-pad" maxLength={5} placeholder="23:00" />
@@ -187,11 +179,16 @@ export function OnboardingFlow({ repo, onDone }: { repo: SettingsRepository; onD
 
       {error ? <ErrorText>{error}</ErrorText> : null}
       <View style={styles.footer}>
-        <PrimaryButton
-          label={step === 0 ? 'Başlayalım' : step === STEPS - 1 ? 'Başla' : 'Devam'}
-          disabled={saving}
-          onPress={step === STEPS - 1 ? () => void finish() : next}
-        />
+        {step === STEPS - 1 ? (
+          <>
+            <PrimaryButton label="Bildirimlere izin ver" disabled={saving} onPress={() => void finish(true)} />
+            <Pressable onPress={() => void finish(false)} disabled={saving} accessibilityRole="button" style={styles.skip}>
+              <Text style={styles.skipText}>Şimdi değil</Text>
+            </Pressable>
+          </>
+        ) : (
+          <PrimaryButton label={step === 0 ? 'Başlayalım' : 'Devam'} disabled={saving} onPress={next} />
+        )}
       </View>
     </View>
   );
@@ -212,5 +209,7 @@ const styles = StyleSheet.create({
   lead: { fontFamily: fonts.bodyBold, fontSize: 16, lineHeight: 23, color: colors.inkSoft },
   small: { fontFamily: fonts.bodyBold, fontSize: 14, lineHeight: 20, color: colors.ink },
   row: { flexDirection: 'row', gap: 10 },
-  footer: { paddingTop: 4 },
+  footer: { paddingTop: 4, gap: 4 },
+  skip: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  skipText: { fontFamily: fonts.bodyHeavy, fontSize: 15, color: colors.inkSoft },
 });

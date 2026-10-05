@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,14 @@ export default function ProfileScreen() {
   const [weightText, setWeightText] = useState(profile.weightKg === null ? '' : String(profile.weightKg));
   const [error, setError] = useState<string | null>(null);
   const [badField, setBadField] = useState<'age' | 'weight' | null>(null);
+  const timers = useRef<{ age?: ReturnType<typeof setTimeout>; weight?: ReturnType<typeof setTimeout> }>({});
+  useEffect(() => {
+    const t = timers.current;
+    return () => {
+      clearTimeout(t.age);
+      clearTimeout(t.weight);
+    };
+  }, []);
 
   const run = async (work: () => Promise<void>) => {
     try {
@@ -43,19 +51,39 @@ export default function ProfileScreen() {
   const saveProfile = (patch: { age?: number | null; weightKg?: number | null; activity?: Activity | null }) =>
     run(() => repo.saveProfile({ ...profile, ...patch }));
 
-  const commitAge = () => {
-    const parsed = parseAge(ageText);
+  const commitAge = (text = ageText) => {
+    clearTimeout(timers.current.age);
+    const parsed = parseAge(text);
     if (!parsed.ok) return (setError(parsed.message), setBadField('age'));
     setBadField(null);
     if (parsed.value !== profile.age) void saveProfile({ age: parsed.value });
     else setError(null);
   };
-  const commitWeight = () => {
-    const parsed = parseWeight(weightText);
+  const commitWeight = (text = weightText) => {
+    clearTimeout(timers.current.weight);
+    const parsed = parseWeight(text);
     if (!parsed.ok) return (setError(parsed.message), setBadField('weight'));
     setBadField(null);
     if (parsed.value !== profile.weightKg) void saveProfile({ weightKg: parsed.value });
     else setError(null);
+  };
+
+  /** Yazarken kaydet: durakladıktan 0,7 sn sonra doğrulanır/kaydedilir (sayı tuş takımında "Bitti" tuşu yok). */
+  const onAgeChange = (raw: string) => {
+    const text = raw.replace(/\D/g, '').slice(0, 3);
+    setAgeText(text);
+    setBadField(null);
+    setError(null);
+    clearTimeout(timers.current.age);
+    timers.current.age = setTimeout(() => commitAge(text), 700);
+  };
+  const onWeightChange = (raw: string) => {
+    const text = raw.replace(/\D/g, '').slice(0, 3);
+    setWeightText(text);
+    setBadField(null);
+    setError(null);
+    clearTimeout(timers.current.weight);
+    timers.current.weight = setTimeout(() => commitWeight(text), 700);
   };
 
   return (
@@ -81,8 +109,8 @@ export default function ProfileScreen() {
         <Card>
           <Label>Profil (isteğe bağlı)</Label>
           <View style={styles.row}>
-            <Field label="Yaş" value={ageText} onChangeText={(t) => (setAgeText(t.replace(/\D/g, '').slice(0, 3)), setBadField(null))} onEndEditing={commitAge} keyboardType="number-pad" maxLength={3} bad={badField === 'age'} />
-            <Field label="Kilo (kg)" value={weightText} onChangeText={(t) => (setWeightText(t.replace(/\D/g, '').slice(0, 3)), setBadField(null))} onEndEditing={commitWeight} keyboardType="number-pad" maxLength={3} bad={badField === 'weight'} />
+            <Field label="Yaş" value={ageText} onChangeText={(t) => onAgeChange(t)} onEndEditing={() => commitAge()} keyboardType="number-pad" maxLength={3} bad={badField === 'age'} />
+            <Field label="Kilo (kg)" value={weightText} onChangeText={(t) => onWeightChange(t)} onEndEditing={() => commitWeight()} keyboardType="number-pad" maxLength={3} bad={badField === 'weight'} />
           </View>
           <Label>Aktivite düzeyi</Label>
           <Chips label="Aktivite düzeyi" options={ACTIVITIES.map((a) => ({ value: a.id, label: a.label }))} selected={profile.activity} onSelect={(v) => void saveProfile({ activity: v === profile.activity ? null : v })} />
