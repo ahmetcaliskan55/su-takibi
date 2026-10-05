@@ -13,18 +13,20 @@ interface Props {
   stage: PlantStage;
   /** Piksel genişliği; yükseklik 1,2 katıdır. */
   width: number;
+  /** Dar kesit (takvim hücreleri): yalnızca bitkinin gövdesi, yükseklik = 2 × genişlik. */
+  compact?: boolean;
 }
 
 const LEAF_VEINS = '#D8F2CF';
 const STEM = '#5FAE62';
 
 /** Prototipteki saksı + beş aşamalı bitki çizimi (design/prototype.html → "Bitki" bileşeni). */
-export function Plant({ stage, width }: Props) {
+export function Plant({ stage, width, compact = false }: Props) {
   return (
     <Svg
       width={width}
-      height={width * 1.2}
-      viewBox="0 0 200 240"
+      height={compact ? width * 2 : width * 1.2}
+      viewBox={compact ? '40 0 120 240' : '0 0 200 240'}
       accessible
       accessibilityRole="image"
       accessibilityLabel={LABELS[stage]}

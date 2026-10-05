@@ -57,6 +57,13 @@ const toLog = (r: LogRow): WaterLog => ({
   createdAt: r.created_at,
 });
 
+/** Bir günün özeti (kayıt listesi olmadan): geçmiş ekranı için. */
+export interface DayTotal {
+  localDate: string;
+  goalMl: number;
+  totalMl: number;
+}
+
 export interface NewLogRecord {
   localDate: string;
   minuteOfDay: number;
@@ -72,6 +79,12 @@ export interface WaterRepository {
   loadDay(localDate: string): Promise<DaySummary>;
   /** Doğrulanmış kaydı ekler; gün satırı yoksa aynı işlemde anlık görüntüyü oluşturur. */
   addLog(record: NewLogRecord, nowMs: number): Promise<WaterLog>;
+  /** Gün satırı olan günlerin toplamları (`from`–`to` dahil). Satırı olmayan gün "veri yok"tur. */
+  getTotals(from: string, to: string): Promise<DayTotal[]>;
+  /** Kayıtlı en eski gün; hiç yoksa `null`. */
+  firstDay(): Promise<string | null>;
+  /** Günü OLUŞTURMADAN okur (salt okunur geçmiş görünümü); satırı yoksa `null`. */
+  peekDay(localDate: string): Promise<DaySummary | null>;
   /** Tek kayıt; yoksa `null`. */
   getLog(id: number): Promise<WaterLog | null>;
   /** Miktarı/saati günceller; gün ve oluşturma zamanı değişmez. Önceki ve sonraki hâli döndürür. */
@@ -154,6 +167,33 @@ export function createWaterRepository(db: Db, exclusive: Mutex = createMutex()):
     },
 
     getLog: (id) => exclusive(() => readLog(id)),
+
+    async getTotals(from, to) {
+      requireDate(from);
+      requireDate(to);
+      return exclusive(async () => {
+        const rows = await db.getAllAsync<{ local_date: string; goal_ml: number; total: number }>(
+          `SELECT d.local_date, d.goal_ml, COALESCE(SUM(w.amount_ml), 0) AS total
+           FROM days d LEFT JOIN water_logs w ON w.local_date = d.local_date
+           WHERE d.local_date BETWEEN ? AND ?
+           GROUP BY d.local_date, d.goal_ml
+           ORDER BY d.local_date`,
+          [from, to],
+        );
+        return rows.map((r) => ({ localDate: r.local_date, goalMl: r.goal_ml, totalMl: r.total }));
+      });
+    },
+
+    firstDay: () =>
+      exclusive(async () => (await db.getFirstAsync<{ d: string | null }>('SELECT MIN(local_date) AS d FROM days'))?.d ?? null),
+
+    async peekDay(localDate) {
+      requireDate(localDate);
+      return exclusive(async () => {
+        const exists = await db.getFirstAsync<{ n: number }>('SELECT 1 AS n FROM days WHERE local_date = ?', [localDate]);
+        return exists ? readDay(localDate) : null;
+      });
+    },
 
     async updateLog(id, patch) {
       const amount = validateAmount(patch.amountMl);

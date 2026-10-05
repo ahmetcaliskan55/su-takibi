@@ -52,6 +52,27 @@ export function isValidDateKey(key: unknown): key is string {
   return probe.getFullYear() === y && probe.getMonth() === mo - 1 && probe.getDate() === d;
 }
 
+export const MONTHS_SHORT_TR = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'] as const;
+export const WEEKDAYS_SHORT_TR = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'] as const;
+
+/** Anahtarı yerel `Date`e çevirir (öğlen 12:00 değil, gün başı). Geçersizse hata verir. */
+export function parseDateKey(key: string): Date {
+  if (!isValidDateKey(key)) throw new Error(`Geçersiz gün anahtarı: ${key}`);
+  const [y, m, d] = key.split('-').map(Number) as [number, number, number];
+  return new Date(y, m - 1, d);
+}
+
+/** `n` gün sonrası (negatif: önce). Yerel takvimle hesaplanır; yaz saati kaymasından etkilenmez. */
+export function addDaysToKey(key: string, n: number): string {
+  const d = parseDateKey(key);
+  return toLocalDateKey(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n));
+}
+
+/** Pazartesi = 0 … Pazar = 6. */
+export function weekdayIndexMon0(key: string): number {
+  return (parseDateKey(key).getDay() + 6) % 7;
+}
+
 /** Bir sonraki takvim günü (`2026-10-31` → `2026-11-01`). Geçersiz anahtarda hata verir. */
 export function nextDateKey(key: string): string {
   if (!isValidDateKey(key)) throw new Error(`Geçersiz gün anahtarı: ${key}`);
