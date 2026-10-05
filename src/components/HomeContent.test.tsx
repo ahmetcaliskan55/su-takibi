@@ -18,7 +18,7 @@ function render(d: DaySummary, props: Partial<Parameters<typeof HomeContent>[0]>
   let renderer!: ReturnType<typeof create>;
   act(() => {
     renderer = create(
-      <HomeContent day={d} now={NOW} saving={false} addError={null} bubbleEvent="idle" onQuickAdd={onQuickAdd} {...props} />,
+      <HomeContent day={d} now={NOW} saving={false} actionError={null} onOpenAdd={jest.fn()} onOpenRecords={jest.fn()} bubbleEvent="idle" onQuickAdd={onQuickAdd} {...props} />,
     );
   });
   return { root: renderer.root, onQuickAdd };
@@ -40,7 +40,7 @@ describe('HomeContent', () => {
   });
 
   it('kısmi ilerlemede toplamı, yüzdeyi, sonraki aşamayı ve son kaydı gösterir', () => {
-    const { root } = render(day(750, [{ id: 2, localDate: '2026-10-02', minuteOfDay: 870, amountMl: 250 }]));
+    const { root } = render(day(750, [{ id: 2, localDate: '2026-10-02', minuteOfDay: 870, amountMl: 250, createdAt: 0 }]));
     const t = texts(root);
     expect(t).toEqual(expect.arrayContaining(['%38', '750', 'Kalan 1.250 ml', 'Son kayıt: 14.30 · 250 ml']));
     expect(t.join(' ')).toContain('Yaprağa 250 ml kaldı');
@@ -63,8 +63,18 @@ describe('HomeContent', () => {
   });
 
   it('kayıt hatasını görünür bir uyarı olarak gösterir', () => {
-    const { root } = render(day(0), { addError: 'Kayıt eklenemedi. Biraz sonra tekrar dene.' });
+    const { root } = render(day(0), { actionError: 'Kayıt eklenemedi. Biraz sonra tekrar dene.' });
     expect(root.findByProps({ accessibilityRole: 'alert' })).toBeTruthy();
+  });
+
+  it('"Su ekle" ve "Son kayıt" satırı ilgili panelleri açar', () => {
+    const onOpenAdd = jest.fn();
+    const onOpenRecords = jest.fn();
+    const { root } = render(day(0), { onOpenAdd, onOpenRecords });
+    act(() => root.findAll((n) => typeof n.props.onPress === 'function' && texts(n).includes('Su ekle'))[0]!.props.onPress());
+    act(() => root.findByProps({ accessibilityLabel: 'Bugünkü kayıtları göster' }).props.onPress());
+    expect(onOpenAdd).toHaveBeenCalledTimes(1);
+    expect(onOpenRecords).toHaveBeenCalledTimes(1);
   });
 
   it.each([

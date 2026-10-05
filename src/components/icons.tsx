@@ -45,3 +45,19 @@ export function ClockIcon({ size = 16, color }: IconProps) {
     </Svg>
   );
 }
+
+export function PlusIcon({ size = 22, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M12 5v14M5 12h14" {...stroke(color, 2.6)} />
+    </Svg>
+  );
+}
+
+export function ChevronIcon({ size = 14, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path d="M9 5l7 7-7 7" {...stroke(color, 2.6)} />
+    </Svg>
+  );
+}

@@ -29,3 +29,11 @@ export const fonts = {
   bodyBold: 'Nunito_700Bold',
   bodyHeavy: 'Nunito_800ExtraBold',
 } as const;
+
+/** Fredoka'da bulunmayan Türkçe harfler. */
+const FREDOKA_MISSING = /[ğĞşŞİ]/;
+
+/** Metin Fredoka ile çizilirse eksik glif (sistem fontuna düşme) olur mu? */
+export function fredokaLacksGlyphs(text: string): boolean {
+  return FREDOKA_MISSING.test(text);
+}

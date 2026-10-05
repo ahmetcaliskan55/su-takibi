@@ -25,11 +25,15 @@ const STAGE_SAME: Record<PlantStage, string> = {
   4: 'Kaydettim. Çiçek zaten açık, keyfine bak 🌸',
 };
 
-export type BubbleEvent = 'idle' | 'stage-up' | 'stage-same';
+/** Kayıt düzeltildi/silindi/geri alındı: bitki yeni toplama göre yeniden çizilir. */
+export const BUBBLE_EDIT = 'Kaydı düzelttim, boyumu da ona göre ayarladım 🌱';
+
+export type BubbleEvent = 'idle' | 'stage-up' | 'stage-same' | 'edited';
 
 export function bubbleText(event: BubbleEvent, stage: PlantStage, total: number): string {
   if (event === 'stage-up' && stage > 0) return STAGE_UP[stage];
   if (event === 'stage-same') return STAGE_SAME[stage];
+  if (event === 'edited') return BUBBLE_EDIT;
   // Uygulama yeni açıldı: kayıt yoksa karşılama, varsa durumu özetleyen cümle.
   if (total <= 0) return BUBBLE_HELLO;
   return stage === 4 ? STAGE_UP[4] : STAGE_SAME[stage];
