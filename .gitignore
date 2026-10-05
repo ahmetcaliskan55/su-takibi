@@ -20,3 +20,20 @@ android/local.properties
 *.mobileprovision
 .DS_Store
 Thumbs.db
+
+# Expo / React Native
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.p8
+*.key
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.pem
+*.tsbuildinfo
+/ios
+/android
+coverage/
