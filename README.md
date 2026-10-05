@@ -4,7 +4,7 @@
 
 Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geliştirilen, günlük su tüketimini sanal bitki büyümesiyle takip eden mobil uygulama. Üyelik, sunucu, reklam ve analitik yoktur; veriler cihazdaki SQLite veritabanında tutulur ve uygulama internetsiz çalışır.
 
-## Mevcut durum: Aşama 4
+## Mevcut durum: Aşama 5
 
 Çalışanlar:
 
@@ -12,15 +12,16 @@ Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geli�
 - **İlk kurulum (ilk açılışta bir kez):** tanışma, isteğe bağlı profil (yaş, kilo, aktivite), günlük hedef ve bardak miktarı, hatırlatma tercihleri (uyanma/uyuma saati gece yarısını aşabilir). Bildirim izni henüz istenmez; hatırlatmalar sonraki sürümde.
 - **Hedef ve profil ekranı:** Bugün ekranındaki hedefe ya da Ayarlar'a dokununca açılır; kendiliğinden kaydeder. Hedef değişimi yalnızca bugünü etkiler, önceki günlerin hedefi korunur.
 - **Geçmiş:** 5 haftalık takvim (Pazartesi başlar; hücrede o günün bitkisi ve yüzdesi, gün ayrıntısı salt okunur) ve son 7/30 gün istatistiği (günlük ortalama, hedef tamam sayısı, çubuk grafik, her günün kendi hedef çizgisi). Bitki ve yüzde, o günün dondurulmuş hedefine göre hesaplanır.
+- **Ayarlar:** hedef ve profil, bardak/şişe miktarı (hazır ya da 50–2.000 ml özel), hatırlatma açma/kapama, hatırlatma aralığı (1–4 saat), uyanma/uyuma saati (gece yarısını aşan aralık dahil), mesaj tarzı (Nazik / Komik; Bugün ekranındaki balon da buna uyar) ve mesaj örnekleri. Değişiklikler kendiliğinden kaydedilir. **Bildirimler henüz gönderilmez**; tercihler Aşama 6'da kullanılacak.
 - **Gün değişimi:** Uygulama günlerce açılmasa da eksik günler önceki günün hedefiyle, 0 ml olarak oluşturulur.
 - **Su ekle paneli:** özel miktar (10–2.000 ml) ve içme saati; boş, geçersiz, negatif ve gelecekteki saat girişleri doğrulanır.
 - **Bugünkü kayıtlar:** saat ve miktarla liste; her kayıt düzenlenebilir ve silinebilir.
 - **Geri al:** ekleme, düzenleme ve silmeden sonra 7 saniyelik bildirim; yalnızca o son işlemi tersine çevirir. Veritabanı işlemi başarısız olursa başarı mesajı gösterilmez.
 - Yerel SQLite: şema + migration altyapısı, günün **hedef anlık görüntüsü** ve su kayıtları. Kayıtlar uygulama kapatılıp açılınca korunur.
 - Günler yerel takvim gününe göre ayrılır; uygulama öne gelince ve gece yarısında gün yeniden hesaplanır.
-- Alt gezinme (Bugün / Geçmiş / Ayarlar). Ayarlar'ın geri kalanı şimdilik "sonraki aşamada geliyor" yer tutucusudur.
+- Alt gezinme: Bugün / Geçmiş / Ayarlar.
 
-Henüz yok: ayarlar, bildirimler, tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
+Henüz yok: bildirimler (tercihler kaydedilir ama bildirim gönderilmez), tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
 
 > **Günlük hedef (2.000 ml) yalnızca geliştirme varsayılanıdır.** Kişiye özel bir öneri veya tıbbi ihtiyaç değildir. Yaş/kilo/aktiviteye göre hedef önerisi, kaynakları değerlendirildikten sonra ayrı bir aşamada ele alınacaktır; doğrulanmamış formül kullanılmaz.
 

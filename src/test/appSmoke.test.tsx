@@ -52,7 +52,7 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(await screen.findByText('Önceki günlerin bitkileri')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
-    expect(await screen.findByText('Diğer ayarlar sonraki aşamalarda geliyor')).toBeTruthy();
+    expect(await screen.findByText('Uygulama tercihlerin')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('tab', { name: 'Bugün' }));
     expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
@@ -140,6 +140,61 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(screen.getByText('Veri yok · 6 gün')).toBeTruthy();
     fireEvent.press(screen.getByText('Son 30 gün'));
     expect(await screen.findByText('Veri yok · 29 gün')).toBeTruthy();
+  });
+
+  it('Ayarlar: hatırlatma tercihleri, mesaj tarzı ve bardak miktarı kaydedilir', async () => {
+    renderRouter(path.resolve(__dirname, '../app'));
+    expect(await screen.findByText('Kalan 1.550 ml')).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
+    expect(await screen.findByText('Uygulama tercihlerin')).toBeTruthy();
+
+    // ilk kurulumda seçilen değerler: 08:00 – 01:00 (gece yarısını aşan)
+    expect(screen.getByText(/01\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
+    expect(screen.getByText('330 ml')).toBeTruthy();
+
+    fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
+    expect(await screen.findByText('Hatırlatmalar kapalı. Su kayıtların ve bitkin bundan etkilenmez.')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
+    fireEvent.press(await screen.findByText('3 saat'));
+
+    const sleep = screen.getByLabelText('Uyuma saati');
+    fireEvent.changeText(sleep, '2500');
+    fireEvent(sleep, 'endEditing');
+    expect(await screen.findByText('Saati 16:30 biçiminde yaz.')).toBeTruthy();
+    fireEvent.changeText(sleep, '0800'); // uyanma ile aynı
+    fireEvent(sleep, 'endEditing');
+    expect(await screen.findByText('Uyanma ve uyuma saati aynı olamaz.')).toBeTruthy();
+    fireEvent.changeText(sleep, '2300');
+    // not, alan bırakılmadan (kayıttan önce) yazılan değere göre anında güncellenir
+    expect(await screen.findByText(/23\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
+    fireEvent(sleep, 'endEditing');
+    expect(await screen.findByText(/23\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
+    // uyanma 08:00, uyuma 01:00 → 01.00 – 08.00
+    fireEvent.changeText(sleep, '0100');
+    fireEvent(sleep, 'endEditing');
+    expect(await screen.findByText(/01\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
+    expect(screen.queryByText(/23\.00 – 08\.00 arasında/)).toBeNull();
+
+    fireEvent.press(screen.getByText('Nazik'));
+    expect(await screen.findByText('Sakin ve kısa hatırlatmalar; ton hep aynı kalır.')).toBeTruthy();
+    fireEvent.press(screen.getByText('Mesaj örneklerini gör'));
+    expect(await screen.findByText('Seçili tarz: Nazik')).toBeTruthy();
+    expect(screen.getByText('1. seviye · son kayıttan 3 saat sonra')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Kapat'));
+
+    fireEvent.press(screen.getByText('Bardak / şişe miktarı'));
+    const custom = await screen.findByLabelText('Özel miktar (ml)');
+    fireEvent.changeText(custom, '10');
+    fireEvent.press(screen.getByText('Uygula'));
+    expect(await screen.findByText('Miktarı 50 ile 2.000 ml arasında rakamla gir.')).toBeTruthy();
+    fireEvent.changeText(custom, '400');
+    fireEvent.press(screen.getByText('Uygula'));
+    expect(await screen.findByText('400 ml')).toBeTruthy();
+
+    // tercihler kalıcı: sekmeler arasında gezince korunur ve Bugün'deki balon yeni tarza geçer
+    fireEvent.press(screen.getByRole('tab', { name: 'Bugün' }));
+    expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
+    expect(screen.getByText(/Kaydedildi\.|Hoş geldin\./)).toBeTruthy();
   });
 });
 

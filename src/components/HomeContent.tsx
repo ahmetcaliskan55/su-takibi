@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { bubbleText, type BubbleEvent } from '@/domain/messages';
 import { formatDayHeading, formatMinuteOfDay, formatMl } from '@/domain/date';
 import { nextStage, plantStage, progressPercent, remainingMl } from '@/domain/plant';
+import type { Tone } from '@/domain/profile';
 import { QUICK_AMOUNTS_ML } from '@/domain/water';
 import type { DaySummary } from '@/db/waterRepository';
 import { colors } from '@/theme/colors';
@@ -18,6 +19,7 @@ interface Props {
   saving: boolean;
   actionError: string | null;
   bubbleEvent: BubbleEvent;
+  tone: Tone;
   onQuickAdd: (amountMl: number) => void;
   onOpenAdd: () => void;
   onOpenRecords: () => void;
@@ -27,7 +29,7 @@ interface Props {
 const QUICK_ICON_SIZES: Record<number, [number, number]> = { 150: [12, 15], 250: [15, 18], 500: [18, 22] };
 const STAGE_DROPS = ['Filiz', 'Yaprak', 'Tomurcuk', 'Çiçek'] as const;
 
-export function HomeContent({ day, now, saving, actionError, bubbleEvent, onQuickAdd, onOpenAdd, onOpenRecords, onOpenProfile }: Props) {
+export function HomeContent({ day, now, saving, actionError, bubbleEvent, tone, onQuickAdd, onOpenAdd, onOpenRecords, onOpenProfile }: Props) {
   const { width } = useWindowDimensions();
   const cardWidth = width - 40;
   const plantWidth = Math.min(216, Math.round(cardWidth * 0.6));
@@ -59,7 +61,7 @@ export function HomeContent({ day, now, saving, actionError, bubbleEvent, onQuic
 
         <View style={[styles.bubble, { width: sideWidth }]}>
           <Text style={styles.bubbleLabel}>Saksın diyor ki</Text>
-          <Text style={styles.bubbleText}>{bubbleText(bubbleEvent, stage, totalMl)}</Text>
+          <Text style={styles.bubbleText}>{bubbleText(bubbleEvent, stage, totalMl, tone)}</Text>
         </View>
 
         <Pressable onPress={onOpenProfile} accessibilityRole="button" accessibilityLabel="Günlük hedefi düzenle" style={[styles.totals, { width: sideWidth }]}>
