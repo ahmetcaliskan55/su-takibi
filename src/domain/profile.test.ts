@@ -1,4 +1,4 @@
-import { quietHoursText, parseAge, parseWakeSleep, parseWeight, PROFILE_MESSAGES, stepGoal } from './profile';
+import { reminderWindowText, parseAge, parseWakeSleep, parseWeight, PROFILE_MESSAGES, stepGoal } from './profile';
 
 describe('stepGoal', () => {
   it('±100 ml ve 500–4.000 sınırı', () => {
@@ -35,11 +35,11 @@ describe('parseWakeSleep', () => {
   });
 });
 
-describe('quietHoursText', () => {
-  it('sessiz aralık uyuma → uyanma saatidir ve seçime göre değişir', () => {
-    expect(quietHoursText(480, 60)).toBe('01.00 – 08.00 arasında bildirim gönderilmez.'); // uyanma 08:00, uyuma 01:00
-    expect(quietHoursText(480, 1380)).toBe('23.00 – 08.00 arasında bildirim gönderilmez.');
-    expect(quietHoursText(420, 1410)).toBe('23.30 – 07.00 arasında bildirim gönderilmez.');
-    expect(quietHoursText(780, 120)).toBe('02.00 – 13.00 arasında bildirim gönderilmez.');
+describe('reminderWindowText', () => {
+  it('hatırlatma aralığı uyanma → uyuma, sessiz aralık uyuma → uyanma; seçime göre değişir', () => {
+    expect(reminderWindowText(480, 60)).toBe('Hatırlatmalar 08.00 – 01.00 arasında gelir (gece yarısını aşar). 01.00 – 08.00 arasında sessiz kalır.');
+    expect(reminderWindowText(480, 1380)).toBe('Hatırlatmalar 08.00 – 23.00 arasında gelir. 23.00 – 08.00 arasında sessiz kalır.');
+    expect(reminderWindowText(480, 1320)).toBe('Hatırlatmalar 08.00 – 22.00 arasında gelir. 22.00 – 08.00 arasında sessiz kalır.');
+    expect(reminderWindowText(780, 120)).toBe('Hatırlatmalar 13.00 – 02.00 arasında gelir (gece yarısını aşar). 02.00 – 13.00 arasında sessiz kalır.');
   });
 });

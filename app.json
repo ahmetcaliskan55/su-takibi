@@ -9,7 +9,14 @@
     "userInterfaceStyle": "light",
     "backgroundColor": "#FFF5E8",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#23784A"
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": false

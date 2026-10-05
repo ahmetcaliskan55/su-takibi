@@ -4,7 +4,7 @@
 
 Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geliştirilen, günlük su tüketimini sanal bitki büyümesiyle takip eden mobil uygulama. Üyelik, sunucu, reklam ve analitik yoktur; veriler cihazdaki SQLite veritabanında tutulur ve uygulama internetsiz çalışır.
 
-## Mevcut durum: Aşama 5
+## Mevcut durum: Aşama 6
 
 Çalışanlar:
 
@@ -12,7 +12,8 @@ Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geli�
 - **İlk kurulum (ilk açılışta bir kez):** tanışma, isteğe bağlı profil (yaş, kilo, aktivite), günlük hedef ve bardak miktarı, hatırlatma tercihleri (uyanma/uyuma saati gece yarısını aşabilir). Bildirim izni henüz istenmez; hatırlatmalar sonraki sürümde.
 - **Hedef ve profil ekranı:** Bugün ekranındaki hedefe ya da Ayarlar'a dokununca açılır; kendiliğinden kaydeder. Hedef değişimi yalnızca bugünü etkiler, önceki günlerin hedefi korunur.
 - **Geçmiş:** 5 haftalık takvim (Pazartesi başlar; hücrede o günün bitkisi ve yüzdesi, gün ayrıntısı salt okunur) ve son 7/30 gün istatistiği (günlük ortalama, hedef tamam sayısı, çubuk grafik, her günün kendi hedef çizgisi). Bitki ve yüzde, o günün dondurulmuş hedefine göre hesaplanır.
-- **Ayarlar:** hedef ve profil, bardak/şişe miktarı (hazır ya da 50–2.000 ml özel), hatırlatma açma/kapama, hatırlatma aralığı (1–4 saat), uyanma/uyuma saati (gece yarısını aşan aralık dahil), mesaj tarzı (Nazik / Komik; Bugün ekranındaki balon da buna uyar) ve mesaj örnekleri. Değişiklikler kendiliğinden kaydedilir. **Bildirimler henüz gönderilmez**; tercihler Aşama 6'da kullanılacak.
+- **Ayarlar:** hedef ve profil, bardak/şişe miktarı (hazır ya da 50–2.000 ml özel), hatırlatma açma/kapama, hatırlatma aralığı (1–4 saat), uyanma/uyuma saati (gece yarısını aşan aralık dahil), mesaj tarzı (Nazik / Komik; Bugün ekranındaki balon da buna uyar) ve mesaj örnekleri. Değişiklikler kendiliğinden kaydedilir. 
+- **Yerel hatırlatmalar:** uyanık saatlerde, son kayıttan itibaren her aralıkta; seviye 1 → 4 (komik/nazik mesajlar). Su kaydı gelince sayaç sıfırlanır, hedef tamamlanınca bugünün hatırlatmaları durur. Ayar/hedef/kayıt değişince plan yenilenir. Bildirim izni reddedilirse uygulama yine kullanılır. Ayrıntı ve platform sınırları: `docs/notifications.md`.
 - **Gün değişimi:** Uygulama günlerce açılmasa da eksik günler önceki günün hedefiyle, 0 ml olarak oluşturulur.
 - **Su ekle paneli:** özel miktar (10–2.000 ml) ve içme saati; boş, geçersiz, negatif ve gelecekteki saat girişleri doğrulanır.
 - **Bugünkü kayıtlar:** saat ve miktarla liste; her kayıt düzenlenebilir ve silinebilir.
@@ -21,7 +22,7 @@ Android ve iOS için tek kod tabanıyla (React Native + Expo + TypeScript) geli�
 - Günler yerel takvim gününe göre ayrılır; uygulama öne gelince ve gece yarısında gün yeniden hesaplanır.
 - Alt gezinme: Bugün / Geçmiş / Ayarlar.
 
-Henüz yok: bildirimler (tercihler kaydedilir ama bildirim gönderilmez), tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
+Henüz yok: tüm verileri silme, geçmiş güne kayıt ekleme/düzenleme.
 
 > **Günlük hedef (2.000 ml) yalnızca geliştirme varsayılanıdır.** Kişiye özel bir öneri veya tıbbi ihtiyaç değildir. Yaş/kilo/aktiviteye göre hedef önerisi, kaynakları değerlendirildikten sonra ayrı bir aşamada ele alınacaktır; doğrulanmamış formül kullanılmaz.
 
@@ -57,6 +58,7 @@ Telefon ve bilgisayar aynı Wi-Fi'deyse çıkan QR kodu Expo Go ile okutun. Ağ 
 - `src/db/` — SQLite arayüzü, migration'lar, depo katmanı
 - `src/state/` — veritabanı sağlayıcısı, `useToday`, servis
 - `src/components/`, `src/theme/` — B tasarımının bileşenleri, renkleri ve fontları
+- `docs/notifications.md` — hatırlatma tasarımı, platform sınırları, cihazda test listesi
 - `docs/dependency-audit.md` — `npm audit` bulguları ve değerlendirmesi
 - `design/prototype.html` — tasarım prototipi (referans; değiştirilmez)
 

@@ -1,5 +1,14 @@
 import path from 'node:path';
 import { fireEvent, renderRouter, screen, waitFor } from 'expo-router/testing-library';
+import { expoDriver } from '@/notifications/expoDriver';
+import type { FakeDriver } from '@/test/fakeDriver';
+
+// Gerçek bildirimler yerine bellek içi sürücü: çağrılar ve planlananlar denetlenir.
+jest.mock('@/notifications/expoDriver', () => {
+  const { createFakeDriver } = require('@/test/fakeDriver'); // eslint-disable-line @typescript-eslint/no-require-imports
+  return { expoDriver: createFakeDriver({ state: 'undetermined', canAskAgain: true }), CHANNEL_ID: 'test' };
+});
+const driver = expoDriver as unknown as FakeDriver;
 
 // Gerçek expo-sqlite yerine aynı migration/SQL'i çalıştıran bellek içi veritabanı.
 jest.mock('@/db/appDatabase', () => {
@@ -32,12 +41,18 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     fireEvent.press(screen.getByText('330'));
     fireEvent.press(screen.getByText('Devam'));
     fireEvent.changeText(await screen.findByLabelText('Uyuma saati'), '0800');
-    fireEvent.press(screen.getByText('Başla'));
+    fireEvent.press(screen.getByText('Bildirimlere izin ver'));
     expect(await screen.findByText('Uyanma ve uyuma saati aynı olamaz.')).toBeTruthy();
+    expect(driver.calls).not.toContain('request'); // hata varken kurulum da izin isteği de yok
     fireEvent.changeText(screen.getByLabelText('Uyuma saati'), '0100'); // gece yarısını aşan aralık geçerli
-    fireEvent.press(screen.getByText('Başla'));
+    fireEvent.press(screen.getByText('Bildirimlere izin ver'));
 
     expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
+    // izin istendi, verildi ve hatırlatmalar planlandı (yinelenen kimlik yok)
+    expect(driver.calls).toContain('request');
+    await waitFor(() => expect(driver.scheduled.length).toBeGreaterThan(0));
+    expect(new Set(driver.scheduled.map((p) => p.id)).size).toBe(driver.scheduled.length);
+    expect(driver.scheduled.every((p) => !(p.fireAt.getHours() >= 1 && p.fireAt.getHours() < 8))).toBe(true); // 08:00–01:00 dışında sessiz
     expect(screen.getByText('Bugün henüz kayıt yok')).toBeTruthy();
     expect(screen.getByText('Kalan 2.000 ml')).toBeTruthy();
 
@@ -149,31 +164,36 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(await screen.findByText('Uygulama tercihlerin')).toBeTruthy();
 
     // ilk kurulumda seçilen değerler: 08:00 – 01:00 (gece yarısını aşan)
-    expect(screen.getByText(/01\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
+    expect(screen.getByText(/Hatırlatmalar 08\.00 – 01\.00 arasında gelir \(gece yarısını aşar\)\. 01\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
     expect(screen.getByText('330 ml')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
     expect(await screen.findByText('Hatırlatmalar kapalı. Su kayıtların ve bitkin bundan etkilenmez.')).toBeTruthy();
+    await waitFor(() => expect(driver.scheduled).toEqual([])); // kapatınca planlı bildirimler iptal edilir
     fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
+    await waitFor(() => expect(driver.scheduled.length).toBeGreaterThan(0)); // açınca yeniden planlanır
     fireEvent.press(await screen.findByText('3 saat'));
 
     const sleep = screen.getByLabelText('Uyuma saati');
+    const wake = screen.getByLabelText('Uyanma saati');
     fireEvent.changeText(sleep, '2500');
-    fireEvent(sleep, 'endEditing');
     expect(await screen.findByText('Saati 16:30 biçiminde yaz.')).toBeTruthy();
     fireEvent.changeText(sleep, '0800'); // uyanma ile aynı
-    fireEvent(sleep, 'endEditing');
     expect(await screen.findByText('Uyanma ve uyuma saati aynı olamaz.')).toBeTruthy();
+    // geçerli saate düzeltilince eski hata silinir ve not hemen güncellenir (alandan çıkmadan, "Bitti" tuşu olmadan)
+    fireEvent.changeText(sleep, '2200');
+    expect(await screen.findByText(/Hatırlatmalar 08\.00 – 22\.00 arasında gelir\. 22\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
+    expect(screen.queryByText('Uyanma ve uyuma saati aynı olamaz.')).toBeNull();
+    expect(screen.queryByText(/01\.00 – 08\.00/)).toBeNull();
     fireEvent.changeText(sleep, '2300');
-    // not, alan bırakılmadan (kayıttan önce) yazılan değere göre anında güncellenir
-    expect(await screen.findByText(/23\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
-    fireEvent(sleep, 'endEditing');
-    expect(await screen.findByText(/23\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
-    // uyanma 08:00, uyuma 01:00 → 01.00 – 08.00
+    expect(await screen.findByText(/08\.00 – 23\.00 arasında gelir\. 23\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
     fireEvent.changeText(sleep, '0100');
-    fireEvent(sleep, 'endEditing');
-    expect(await screen.findByText(/01\.00 – 08\.00 arasında bildirim gönderilmez/)).toBeTruthy();
-    expect(screen.queryByText(/23\.00 – 08\.00 arasında/)).toBeNull();
+    expect(await screen.findByText(/08\.00 – 01\.00 arasında gelir \(gece yarısını aşar\)\. 01\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
+    fireEvent.changeText(wake, '0900');
+    expect(await screen.findByText(/09\.00 – 01\.00 arasında gelir/)).toBeTruthy();
+    fireEvent.changeText(wake, '0800');
+    fireEvent.changeText(sleep, '2300');
+    expect(await screen.findByText(/08\.00 – 23\.00 arasında gelir/)).toBeTruthy();
 
     fireEvent.press(screen.getByText('Nazik'));
     expect(await screen.findByText('Sakin ve kısa hatırlatmalar; ton hep aynı kalır.')).toBeTruthy();
@@ -183,6 +203,8 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     fireEvent.press(screen.getByLabelText('Kapat'));
 
     fireEvent.press(screen.getByText('Bardak / şişe miktarı'));
+    expect(await screen.findByText('Şu an seçili')).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/400/)).toBeNull(); // karışıklık yaratan örnek yazı yok
     const custom = await screen.findByLabelText('Özel miktar (ml)');
     fireEvent.changeText(custom, '10');
     fireEvent.press(screen.getByText('Uygula'));
@@ -195,6 +217,30 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     fireEvent.press(screen.getByRole('tab', { name: 'Bugün' }));
     expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
     expect(screen.getByText(/Kaydedildi\.|Hoş geldin\./)).toBeTruthy();
+  });
+
+  it('Bildirim izni: reddedilmişse uyarı ve ayar bağlantısı, hiçbir şey planlanmaz; sorulmamışsa açarken izin istenir', async () => {
+    driver.setPermission({ state: 'denied', canAskAgain: false });
+    driver.calls.length = 0;
+    const first = renderRouter(path.resolve(__dirname, '../app'));
+    expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
+    expect(await screen.findByText('Bildirim izni kapalı')).toBeTruthy();
+    await waitFor(() => expect(driver.scheduled).toEqual([])); // izinsiz: uygulama çalışır, bildirim yok
+    fireEvent.press(screen.getByText('Telefon ayarlarını aç'));
+    await waitFor(() => expect(driver.calls).toContain('settings'));
+
+    // izin henüz sorulmamış: hatırlatmayı kapatıp açmak izin penceresini açar
+    first.unmount();
+    driver.setPermission({ state: 'undetermined', canAskAgain: true });
+    renderRouter(path.resolve(__dirname, '../app'));
+    expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
+    fireEvent.press(await screen.findByLabelText('Hatırlatmalar'));
+    expect(await screen.findByText('Hatırlatmalar kapalı. Su kayıtların ve bitkin bundan etkilenmez.')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
+    await waitFor(() => expect(driver.calls).toContain('request'));
+    await waitFor(() => expect(driver.scheduled.length).toBeGreaterThan(0));
   });
 });
 

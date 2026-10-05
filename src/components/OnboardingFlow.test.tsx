@@ -9,38 +9,57 @@ const texts = (root: ReactTestInstance) =>
   root.findAll((n) => (n.type as unknown) === 'Text').map((n) => n.children.filter((c): c is string => typeof c === 'string').join(''));
 const btn = (root: ReactTestInstance, text: string) => root.findAll((n) => typeof n.props.onPress === 'function' && texts(n).includes(text))[0]!;
 
-function setup(completeOnboarding: SettingsRepository['completeOnboarding']) {
+function setup(completeOnboarding: SettingsRepository['completeOnboarding'], requestPermission: () => Promise<unknown> = () => Promise.resolve(null)) {
   const onDone = jest.fn();
+  const onRequestPermission = jest.fn(requestPermission);
   const repo = { completeOnboarding } as SettingsRepository;
   let r!: ReturnType<typeof create>;
   act(() => {
-    r = create(<OnboardingFlow repo={repo} onDone={onDone} />);
+    r = create(<OnboardingFlow repo={repo} onDone={onDone} onRequestPermission={onRequestPermission} />);
   });
-  return { root: r.root, onDone };
+  return { root: r.root, onDone, onRequestPermission };
 }
 const toLastStep = (root: ReactTestInstance) => {
   for (let i = 0; i < 3; i++) act(() => btn(root, i === 0 ? 'Başlayalım' : 'Devam').props.onPress());
 };
 
 describe('OnboardingFlow', () => {
-  it('yaş/kilo boş bırakılarak geçilir; son adımda bildirim izni sorulmaz, tercihler kaydedilir', async () => {
+  it('"Bildirimlere izin ver": hatırlatmalar açık kaydedilir, izin istenir, kurulum biter', async () => {
     const complete = jest.fn().mockResolvedValue(undefined);
-    const { root, onDone } = setup(complete);
+    const { root, onDone, onRequestPermission } = setup(complete);
     toLastStep(root);
-    expect(texts(root).join(' ')).toContain('bildirim izni o zaman istenecek');
-    await act(async () => void btn(root, 'Başla').props.onPress());
-    expect(complete).toHaveBeenCalledTimes(1);
+    expect(texts(root).join(' ')).toContain('birazdan telefonun bildirim izni soracak');
+    await act(async () => void btn(root, 'Bildirimlere izin ver').props.onPress());
     const arg = complete.mock.calls[0][0];
     expect(arg).toMatchObject({ goalMl: 2000, glassMl: 250, profile: { age: null, weightKg: null, activity: null } });
     expect(arg.reminders).toMatchObject({ remindersEnabled: true, intervalMin: 120, wakeMin: 480, sleepMin: 1380, tone: 'komik' });
+    expect(onRequestPermission).toHaveBeenCalledTimes(1);
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
-  it('kayıt başarısızsa ilk kurulum bitmiş sayılmaz ve hata gösterilir', async () => {
-    const { root, onDone } = setup(jest.fn().mockRejectedValue(new Error('disk')));
+  it('"Şimdi değil": hatırlatmalar kapalı kaydedilir, izin istenmez, uygulama kullanılabilir', async () => {
+    const complete = jest.fn().mockResolvedValue(undefined);
+    const { root, onDone, onRequestPermission } = setup(complete);
     toLastStep(root);
-    await act(async () => void btn(root, 'Başla').props.onPress());
+    await act(async () => void btn(root, 'Şimdi değil').props.onPress());
+    expect(complete.mock.calls[0][0].reminders.remindersEnabled).toBe(false);
+    expect(onRequestPermission).not.toHaveBeenCalled();
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('izin reddedilse ya da hata verse de kurulum tamamlanır', async () => {
+    const { root, onDone } = setup(jest.fn().mockResolvedValue(undefined), () => Promise.reject(new Error('reddedildi')));
+    toLastStep(root);
+    await act(async () => void btn(root, 'Bildirimlere izin ver').props.onPress());
+    expect(onDone).toHaveBeenCalledTimes(1);
+  });
+
+  it('kayıt başarısızsa ilk kurulum bitmiş sayılmaz, izin istenmez ve hata gösterilir', async () => {
+    const { root, onDone, onRequestPermission } = setup(jest.fn().mockRejectedValue(new Error('disk')));
+    toLastStep(root);
+    await act(async () => void btn(root, 'Bildirimlere izin ver').props.onPress());
     expect(onDone).not.toHaveBeenCalled();
+    expect(onRequestPermission).not.toHaveBeenCalled();
     expect(texts(root)).toContain('Kaydedilemedi. Biraz sonra tekrar dene.');
   });
 

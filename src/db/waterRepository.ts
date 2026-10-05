@@ -1,4 +1,4 @@
-import { isValidDateKey } from '@/domain/date';
+import { addDaysToKey, isValidDateKey } from '@/domain/date';
 import {
   sumAmounts,
   validateAmount,
@@ -64,6 +64,14 @@ export interface DayTotal {
   totalMl: number;
 }
 
+/** Hatırlatma planı için gereken durum (dün + bugün). */
+export interface ReminderState {
+  /** Hedefi tamamlanmış günler. */
+  completedDates: string[];
+  /** Dün/bugün en son su kaydı; yoksa `null`. */
+  lastLog: { localDate: string; minuteOfDay: number } | null;
+}
+
 export interface NewLogRecord {
   localDate: string;
   minuteOfDay: number;
@@ -85,6 +93,8 @@ export interface WaterRepository {
   firstDay(): Promise<string | null>;
   /** Günü OLUŞTURMADAN okur (salt okunur geçmiş görünümü); satırı yoksa `null`. */
   peekDay(localDate: string): Promise<DaySummary | null>;
+  /** Hatırlatma planı için dün ve bugünün durumu (günleri OLUŞTURMAZ). */
+  reminderState(todayKey: string): Promise<ReminderState>;
   /** Tek kayıt; yoksa `null`. */
   getLog(id: number): Promise<WaterLog | null>;
   /** Miktarı/saati günceller; gün ve oluşturma zamanı değişmez. Önceki ve sonraki hâli döndürür. */
@@ -167,6 +177,28 @@ export function createWaterRepository(db: Db, exclusive: Mutex = createMutex()):
     },
 
     getLog: (id) => exclusive(() => readLog(id)),
+
+    async reminderState(todayKey) {
+      requireDate(todayKey);
+      const from = addDaysToKey(todayKey, -1);
+      return exclusive(async () => {
+        const days = await db.getAllAsync<{ local_date: string; goal_ml: number; total: number }>(
+          `SELECT d.local_date, d.goal_ml, COALESCE(SUM(w.amount_ml), 0) AS total
+           FROM days d LEFT JOIN water_logs w ON w.local_date = d.local_date
+           WHERE d.local_date BETWEEN ? AND ? GROUP BY d.local_date, d.goal_ml`,
+          [from, todayKey],
+        );
+        const last = await db.getFirstAsync<{ local_date: string; minute_of_day: number }>(
+          `SELECT local_date, minute_of_day FROM water_logs WHERE local_date BETWEEN ? AND ?
+           ORDER BY local_date DESC, minute_of_day DESC, id DESC LIMIT 1`,
+          [from, todayKey],
+        );
+        return {
+          completedDates: days.filter((d) => d.total >= d.goal_ml).map((d) => d.local_date),
+          lastLog: last ? { localDate: last.local_date, minuteOfDay: last.minute_of_day } : null,
+        };
+      });
+    },
 
     async getTotals(from, to) {
       requireDate(from);
