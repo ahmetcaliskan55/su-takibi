@@ -50,6 +50,13 @@ export function createFakeDriver(initial: PermissionInfo = { state: 'granted', c
     async openSystemSettings() {
       driver.calls.push('settings');
     },
+    async listScheduled() {
+      const future = driver.scheduled.map((p) => p.fireAt).filter((d) => d.getTime() > Date.now()).sort((a, b) => a.getTime() - b.getTime());
+      return { count: driver.scheduled.length, next: future[0] ?? null };
+    },
+    async sendTest() {
+      driver.calls.push('test');
+    },
   };
   return driver;
 }

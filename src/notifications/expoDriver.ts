@@ -57,4 +57,25 @@ export const expoDriver: NotificationDriver = {
   },
 
   openSystemSettings: () => Linking.openSettings(),
+
+  async listScheduled() {
+    const all = await Notifications.getAllScheduledNotificationsAsync();
+    // Kimlikler `r-<ms>` (hatırlatma) / `p-<ms>` (duraklama) biçimindedir; zamanı kimlikten okumak platformdan bağımsızdır.
+    const times = all
+      .map((n) => /^[rp]-(\d+)$/.exec(n.identifier))
+      .filter((m): m is RegExpExecArray => m !== null)
+      .map((m) => Number(m[1]))
+      .filter((t) => t > Date.now())
+      .sort((a, b) => a - b);
+    return { count: all.length, next: times[0] === undefined ? null : new Date(times[0]) };
+  },
+
+  async sendTest(seconds = 5) {
+    await expoDriver.ensureChannel();
+    await Notifications.scheduleNotificationAsync({
+      identifier: 'test',
+      content: { title: 'Yudumla', body: 'Test bildirimi: bildirimler çalışıyor 🌱' },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: CHANNEL_ID },
+    });
+  },
 };

@@ -29,6 +29,11 @@ Uygulama kapalıyken kod çalışmaz; bildirimler önceden planlanır. Bu yüzde
 - En çok 64 planlı yerel bildirim.
 - Odak modları ve bildirim özeti zamanlamayı etkileyebilir.
 
+## Tanılama (Ayarlar → Hatırlatmalar)
+- **Planlı hatırlatma: N · sıradaki: SS.DD:** işletim sisteminde gerçekten kaç bildirimin planlı olduğunu ve en yakınının saatini gösterir. "Planlı hatırlatma yok" ise sorun planlamada (izin, kapalı anahtar, saat aralığı); sayı varsa ama bildirim gelmiyorsa sorun teslimatta (telefonun bildirim/pil ayarları).
+- **Test bildirimi gönder:** 5 saniye sonra bir deneme bildirimi gösterir; izin ve kanal sorunlarını zamanlamadan ayırır.
+- **"Bu saatlerde hiç hatırlatma gelmez":** uyanık süre hatırlatma aralığından uzun değilse (ilk hatırlatma = uyanma + aralık, uyuma saatinde ya da sonrasında kalır) görünür.
+
 ## Cihazda test edilmesi gerekenler
 Bu davranışlar otomatik testlerde bellek içi sahte sürücüyle doğrulandı; gerçek bildirimlerin gelmesi telefonda denenmelidir:
 1. İzin penceresi (Android 13+) ve reddedilince banner + "Telefon ayarlarını aç".

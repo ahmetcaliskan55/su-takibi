@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Card, Chips, ErrorText, Field, Label, LinkRow, Note, PrimaryButton, Toggle } from '@/components/form';
 import { GlassSheet, MessagesSheet } from '@/components/SettingsSheets';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { formatMl } from '@/domain/date';
+import { formatMinuteOfDay, formatMl, MONTHS_SHORT_TR, toLocalDateKey } from '@/domain/date';
 import { formatTimeInput, maskTimeInput } from '@/domain/logForm';
 import { MESSAGES } from '@/domain/messages';
+import { awakeSpanMin, noReminderFits } from '@/domain/reminders';
 import { INTERVAL_OPTIONS_MIN, parseWakeSleep, reminderWindowText, TONES, type Tone } from '@/domain/profile';
 import type { ReminderPrefs } from '@/db/settingsRepository';
 import { useNotifications } from '@/notifications/NotificationProvider';
@@ -22,12 +23,31 @@ export default function SettingsScreen() {
   const router = useRouter();
   const repo = useSettingsRepository();
   const { settings, reload } = useSettings();
-  const { permission, requestPermission, openSystemSettings } = useNotifications();
+  const { driver, permission, requestPermission, openSystemSettings } = useNotifications();
   const [wakeText, setWakeText] = useState(formatTimeInput(settings.wakeMin));
   const [sleepText, setSleepText] = useState(formatTimeInput(settings.sleepMin));
   const [error, setError] = useState<string | null>(null);
   const [badTimes, setBadTimes] = useState(false);
   const [sheet, setSheet] = useState<'glass' | 'messages' | null>(null);
+  const [schedule, setSchedule] = useState<{ count: number; next: Date | null } | null>(null);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+
+  // Tanılama: işletim sisteminde GERÇEKTEN kaç hatırlatma planlı (eşitleme bitsin diye kısa bir gecikmeyle).
+  useEffect(() => {
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      driver.listScheduled().then(
+        (info) => {
+          if (!cancelled) setSchedule(info);
+        },
+        () => undefined,
+      );
+    }, 800);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [driver, settings, permission?.state]);
 
   const prefs: ReminderPrefs = {
     remindersEnabled: settings.remindersEnabled,
@@ -91,6 +111,32 @@ export default function SettingsScreen() {
   const typed = parseWakeSleep(wakeText, sleepText);
   const windowNote = typed.ok ? reminderWindowText(typed.value.wakeMin, typed.value.sleepMin) : reminderWindowText(settings.wakeMin, settings.sleepMin);
 
+  const sendTest = async () => {
+    setTestMsg(null);
+    let info = permission;
+    if (!info || info.state !== 'granted') {
+      if (info?.state === 'undetermined' || info?.canAskAgain) info = await requestPermission();
+      if (!info || info.state !== 'granted') {
+        setTestMsg('Bildirim izni kapalı: test bildirimi gösterilemez. Önce izni aç.');
+        return;
+      }
+    }
+    try {
+      await driver.sendTest(5);
+      setTestMsg('Test bildirimi 5 saniye içinde gelecek. Gelmezse telefonun bildirim ayarlarında Yudumla bildirimleri kapalı olabilir.');
+    } catch {
+      setTestMsg('Test bildirimi planlanamadı.');
+    }
+  };
+
+  const wakeNow = typed.ok ? typed.value.wakeMin : settings.wakeMin;
+  const sleepNow = typed.ok ? typed.value.sleepMin : settings.sleepMin;
+  const nothingFits = noReminderFits(wakeNow, sleepNow, settings.intervalMin);
+  const nextLabel = (d: Date) => {
+    const hhmm = formatMinuteOfDay(d.getHours() * 60 + d.getMinutes());
+    return toLocalDateKey(d) === toLocalDateKey(new Date()) ? hhmm : `${d.getDate()} ${MONTHS_SHORT_TR[d.getMonth()]} ${hhmm}`;
+  };
+
   const saveGlass = async (ml: number): Promise<string | null> => {
     try {
       await repo.setGlassAmount(ml);
@@ -142,6 +188,20 @@ export default function SettingsScreen() {
               <Chips label="Mesaj tarzı" options={TONES.map((t) => ({ value: t.id, label: t.label }))} selected={settings.tone} onSelect={(t: Tone) => void savePrefs({ tone: t })} />
               <Note>{MESSAGES[settings.tone].description}</Note>
               <LinkRow label="Mesaj örneklerini gör" onPress={() => setSheet('messages')} />
+
+              {nothingFits ? (
+                <Card tone="peach">
+                  <Text style={styles.warnTitle}>Bu saatlerde hiç hatırlatma gelmez</Text>
+                  <Note>{`Uyanık sürün (${Math.floor(awakeSpanMin(wakeNow, sleepNow) / 60)} sa ${awakeSpanMin(wakeNow, sleepNow) % 60} dk) hatırlatma aralığından (${settings.intervalMin / 60} saat) uzun değil. Uyuma saatini ileri al ya da aralığı kısalt.`}</Note>
+                </Card>
+              ) : null}
+
+              <Label>Tanılama</Label>
+              <Note>
+                {schedule === null ? 'Planlı hatırlatma okunuyor…' : schedule.count === 0 ? 'Planlı hatırlatma yok.' : `Planlı hatırlatma: ${schedule.count}${schedule.next ? ` · sıradaki: ${nextLabel(schedule.next)}` : ''}`}
+              </Note>
+              <PrimaryButton label="Test bildirimi gönder" onPress={() => void sendTest()} />
+              {testMsg ? <Note>{testMsg}</Note> : null}
             </>
           ) : (
             <Note>Hatırlatmalar kapalı. Su kayıtların ve bitkin bundan etkilenmez.</Note>
