@@ -49,7 +49,7 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(screen.getByText(/^Son kayıt: \d\d\.\d\d · 250 ml$/)).toBeTruthy();
 
     fireEvent.press(screen.getByRole('tab', { name: 'Geçmiş' }));
-    expect(await screen.findByText('Geçmiş sonraki aşamada geliyor')).toBeTruthy();
+    expect(await screen.findByText('Önceki günlerin bitkileri')).toBeTruthy();
 
     fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
     expect(await screen.findByText('Diğer ayarlar sonraki aşamalarda geliyor')).toBeTruthy();
@@ -119,6 +119,27 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
 
     fireEvent.press(screen.getByLabelText('Geri'));
     expect(await screen.findByText('Kalan 1.550 ml')).toBeTruthy();
+  });
+
+  it('Geçmiş: takvimde bugün görünür, gün ayrıntısı salt okunur açılır; istatistik özetlenir', async () => {
+    renderRouter(path.resolve(__dirname, '../app'));
+    expect(await screen.findByText('Kalan 1.550 ml')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Geçmiş' }));
+    // bugün: 550 ml / 2.100 ml → %26, filiz, kısmi
+    const cell = await screen.findByLabelText(/\(bugün\), filiz, yüzde 26, kısmi/);
+    fireEvent.press(cell);
+    expect(await screen.findByText('Kısmi · %26')).toBeTruthy();
+    expect(screen.getByText('/ 2.100 ml hedef')).toBeTruthy();
+    expect(screen.getByText('2 kayıt')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Kapat'));
+
+    fireEvent.press(screen.getByText('İstatistik'));
+    expect(await screen.findByText('550 ml')).toBeTruthy(); // günlük ortalama (yalnızca bugün verisi var)
+    expect(screen.getByText('0 / 7 gün')).toBeTruthy();
+    expect(screen.getByText('Veri yok · 6 gün')).toBeTruthy();
+    fireEvent.press(screen.getByText('Son 30 gün'));
+    expect(await screen.findByText('Veri yok · 29 gün')).toBeTruthy();
   });
 });
 

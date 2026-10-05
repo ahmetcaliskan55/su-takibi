@@ -176,3 +176,46 @@ describe('updateLog / deleteLog / restoreLog', () => {
     expect((await repo.loadDay(D2)).goalMl).toBe(2000);
   });
 });
+
+describe('geçmiş sorguları: getTotals / firstDay / peekDay', () => {
+  it('yalnızca satırı olan günleri ve doğru toplamları verir; aralık dışı ve boş günler karışmaz', async () => {
+    const { repo } = await setup();
+    await repo.addLog({ localDate: '2026-10-01', minuteOfDay: 60, amountMl: 500 }, 1);
+    await repo.addLog({ localDate: '2026-10-01', minuteOfDay: 70, amountMl: 250 }, 2);
+    await repo.loadDay('2026-10-02'); // kayıtsız gün
+    await repo.addLog({ localDate: '2026-10-04', minuteOfDay: 60, amountMl: 150 }, 3);
+    await repo.addLog({ localDate: '2026-09-30', minuteOfDay: 60, amountMl: 999 }, 4);
+    expect(await repo.getTotals('2026-10-01', '2026-10-03')).toEqual([
+      { localDate: '2026-10-01', goalMl: 2000, totalMl: 750 },
+      { localDate: '2026-10-02', goalMl: 2000, totalMl: 0 },
+      { localDate: '2026-10-03', goalMl: 2000, totalMl: 0 }, // 4 Ekim kaydı eksik günü 0 ml olarak doldurdu
+    ]);
+  });
+
+  it('günün dondurulmuş hedefini verir', async () => {
+    const { repo, raw } = await setup();
+    await repo.loadDay('2026-10-01');
+    raw.prepare('UPDATE settings SET daily_goal_ml = 3500 WHERE id = 1').run();
+    await repo.loadDay('2026-10-02');
+    const rows = await repo.getTotals('2026-10-01', '2026-10-02');
+    expect(rows.map((r) => r.goalMl)).toEqual([2000, 3500]);
+  });
+
+  it('firstDay en eski gün ya da null', async () => {
+    const { repo } = await setup();
+    expect(await repo.firstDay()).toBeNull();
+    await repo.loadDay('2026-10-05');
+    await repo.loadDay('2026-10-03');
+    expect(await repo.firstDay()).toBe('2026-10-03');
+  });
+
+  it('peekDay satır oluşturmaz: yoksa null, varsa kayıtlarıyla döner', async () => {
+    const { repo, raw } = await setup();
+    expect(await repo.peekDay('2026-10-02')).toBeNull();
+    expect(raw.prepare('SELECT COUNT(*) AS n FROM days').get()).toEqual({ n: 0 });
+    await repo.addLog({ localDate: '2026-10-02', minuteOfDay: 600, amountMl: 250 }, 1);
+    const day = await repo.peekDay('2026-10-02');
+    expect(day).toMatchObject({ localDate: '2026-10-02', goalMl: 2000, totalMl: 250 });
+    expect(day!.logs).toHaveLength(1);
+  });
+});
