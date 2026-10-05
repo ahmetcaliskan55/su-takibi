@@ -140,3 +140,54 @@ describe('completeOnboarding', () => {
     expect(s).toMatchObject({ dailyGoalMl: 2000, glassMl: 250, onboardingDone: false });
   });
 });
+
+describe('eraseAllData (tüm verileri sil)', () => {
+  async function filled() {
+    const s = await setup();
+    await s.settings.completeOnboarding({
+      goalMl: 3000,
+      glassMl: 330,
+      profile: { age: 30, weightKg: 70, activity: 'cok' },
+      reminders: { remindersEnabled: false, intervalMin: 180, wakeMin: 300, sleepMin: 60, tone: 'nazik' },
+      todayKey: '2026-10-02',
+    });
+    await s.water.addLog({ localDate: '2026-10-02', minuteOfDay: 600, amountMl: 500 }, 1);
+    await s.water.addLog({ localDate: '2026-10-04', minuteOfDay: 600, amountMl: 250 }, 2); // arada gün doldurulur
+    return s;
+  }
+
+  it('kayıtları, günleri, profili ve ayarları siler; ayarlar varsayılana döner, ilk kurulum yeniden gerekir', async () => {
+    const { settings, water, raw } = await filled();
+    await settings.eraseAllData();
+    expect(raw.prepare('SELECT COUNT(*) AS n FROM water_logs').get()).toEqual({ n: 0 });
+    expect(raw.prepare('SELECT COUNT(*) AS n FROM days').get()).toEqual({ n: 0 });
+    const { settings: s, profile } = await settings.load();
+    expect(s).toEqual({ dailyGoalMl: 2000, glassMl: 250, remindersEnabled: true, intervalMin: 120, wakeMin: 480, sleepMin: 1380, tone: 'komik', onboardingDone: false });
+    expect(profile).toEqual({ age: null, weightKg: null, activity: null });
+    // yeni kullanım temiz başlar: kimlikler yeniden 1'den, günler yeniden oluşur
+    const log = await water.addLog({ localDate: '2026-10-05', minuteOfDay: 60, amountMl: 250 }, 3);
+    expect(log.id).toBe(1);
+    expect((await water.loadDay('2026-10-05')).goalMl).toBe(2000);
+  });
+
+  it('veri yokken de hata vermez (tekrar silme)', async () => {
+    const { settings } = await setup();
+    await settings.eraseAllData();
+    await expect(settings.eraseAllData()).resolves.toBeUndefined();
+  });
+
+  it('işlem yarıda hata verirse hiçbir şey silinmez', async () => {
+    const t = await createTestDb();
+    await runMigrations(t.db);
+    const exclusive = createMutex();
+    const water = createWaterRepository(t.db, exclusive);
+    const failing = createSettingsRepository(
+      { ...t.db, runAsync: async (sql, params) => (sql.includes('onboarding_done = 0') ? Promise.reject(new Error('disk')) : t.db.runAsync(sql, params)) },
+      exclusive,
+    );
+    await water.addLog({ localDate: '2026-10-02', minuteOfDay: 600, amountMl: 500 }, 1);
+    await expect(failing.eraseAllData()).rejects.toThrow('disk');
+    expect((await water.loadDay('2026-10-02')).totalMl).toBe(500); // kayıtlar, günler ve ayarlar yerinde
+    expect(t.raw.prepare('SELECT COUNT(*) AS n FROM days').get()).toEqual({ n: 1 });
+  });
+});

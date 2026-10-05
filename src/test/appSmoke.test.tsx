@@ -164,7 +164,7 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(await screen.findByText('Uygulama tercihlerin')).toBeTruthy();
 
     // ilk kurulumda seçilen değerler: 08:00 – 01:00 (gece yarısını aşan)
-    expect(screen.getByText(/Hatırlatmalar 08\.00 – 01\.00 arasında gelir \(gece yarısını aşar\)\. 01\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
+    expect(screen.getByText(/Hatırlatmalar 08\.00 – 01\.00 arasında gelir \(gece yarısını aşar\)\. 01\.00 – 08\.00 arasında bildirim gelmez\./)).toBeTruthy();
     expect(screen.getByText('330 ml')).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
@@ -182,13 +182,13 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     expect(await screen.findByText('Uyanma ve uyuma saati aynı olamaz.')).toBeTruthy();
     // geçerli saate düzeltilince eski hata silinir ve not hemen güncellenir (alandan çıkmadan, "Bitti" tuşu olmadan)
     fireEvent.changeText(sleep, '2200');
-    expect(await screen.findByText(/Hatırlatmalar 08\.00 – 22\.00 arasında gelir\. 22\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
+    expect(await screen.findByText(/Hatırlatmalar 08\.00 – 22\.00 arasında gelir\. 22\.00 – 08\.00 arasında bildirim gelmez\./)).toBeTruthy();
     expect(screen.queryByText('Uyanma ve uyuma saati aynı olamaz.')).toBeNull();
     expect(screen.queryByText(/01\.00 – 08\.00/)).toBeNull();
     fireEvent.changeText(sleep, '2300');
-    expect(await screen.findByText(/08\.00 – 23\.00 arasında gelir\. 23\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
+    expect(await screen.findByText(/08\.00 – 23\.00 arasında gelir\. 23\.00 – 08\.00 arasında bildirim gelmez\./)).toBeTruthy();
     fireEvent.changeText(sleep, '0100');
-    expect(await screen.findByText(/08\.00 – 01\.00 arasında gelir \(gece yarısını aşar\)\. 01\.00 – 08\.00 arasında sessiz kalır\./)).toBeTruthy();
+    expect(await screen.findByText(/08\.00 – 01\.00 arasında gelir \(gece yarısını aşar\)\. 01\.00 – 08\.00 arasında bildirim gelmez\./)).toBeTruthy();
     fireEvent.changeText(wake, '0900');
     expect(await screen.findByText(/09\.00 – 01\.00 arasında gelir/)).toBeTruthy();
     fireEvent.changeText(wake, '0800');
@@ -258,6 +258,37 @@ describe('uygulama duman testi (rota + sağlayıcılar + veritabanı)', () => {
     fireEvent.press(screen.getByLabelText('Hatırlatmalar'));
     await waitFor(() => expect(driver.calls).toContain('request'));
     await waitFor(() => expect(driver.scheduled.length).toBeGreaterThan(0));
+  });
+
+  it('Tüm verilerimi sil: onay penceresi, vazgeçince veri durur; onaylayınca veriler silinir, bildirimler iptal edilir, ilk kuruluma dönülür', async () => {
+    driver.setPermission({ state: 'granted', canAskAgain: true });
+    renderRouter(path.resolve(__dirname, '../app'));
+    expect(await screen.findByText('Bugünün saksısı')).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
+    fireEvent.press(await screen.findByText('Tüm verilerimi sil'));
+    expect(await screen.findByText('Tüm veriler silinsin mi?')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Vazgeç'));
+    await waitFor(() => expect(screen.queryByText('Tüm veriler silinsin mi?')).toBeNull());
+    fireEvent.press(screen.getByRole('tab', { name: 'Bugün' }));
+    expect(await screen.findByText(/Kalan 1\.5\d\d ml/)).toBeTruthy(); // vazgeçildi: kayıtlar yerinde
+
+    fireEvent.press(screen.getByRole('tab', { name: 'Ayarlar' }));
+    fireEvent.press(await screen.findByText('Tüm verilerimi sil'));
+    fireEvent.press(await screen.findByText('Evet, hepsini sil'));
+    expect(await screen.findByText('Her güne bir tohum')).toBeTruthy(); // ilk kurulum yeniden
+    expect(driver.scheduled).toEqual([]); // planlı bildirimler iptal edildi
+
+    // yeniden kurulum: kayıtlar gerçekten silinmiş, hedef varsayılan
+    fireEvent.press(screen.getByText('Başlayalım'));
+    fireEvent.press(await screen.findByText('Devam'));
+    fireEvent.press(await screen.findByText('Devam'));
+    fireEvent.press(await screen.findByText('Şimdi değil'));
+    expect(await screen.findByText('Bugün henüz kayıt yok')).toBeTruthy();
+    expect(screen.getByText('Kalan 2.000 ml')).toBeTruthy();
+    fireEvent.press(screen.getByRole('tab', { name: 'Geçmiş' }));
+    fireEvent.press(await screen.findByText('İstatistik'));
+    expect(await screen.findByText('Veri yok · 6 gün')).toBeTruthy(); // geçmiş de temiz: yalnızca bugünün satırı var
   });
 });
 

@@ -75,11 +75,11 @@ export function parseGlassAmount(text: string): Parsed<number> {
 /**
  * Hatırlatma saatleri metni: uyanma → uyuma arası hatırlatma gelir, uyuma → uyanma arası sessiz kalır.
  * Uyuma saati uyanmadan önceyse aralık gece yarısını aşar.
- * Örn. uyanma 08:00, uyuma 01:00 → "Hatırlatmalar 08.00 – 01.00 arasında gelir (gece yarısını aşar). 01.00 – 08.00 arasında sessiz kalır."
+ * Örn. uyanma 08:00, uyuma 01:00 → "Hatırlatmalar 08.00 – 01.00 arasında gelir (gece yarısını aşar). 01.00 – 08.00 arasında bildirim gelmez."
  */
 export function reminderWindowText(wakeMin: number, sleepMin: number): string {
   const wake = formatMinuteOfDay(wakeMin);
   const sleep = formatMinuteOfDay(sleepMin);
   const crosses = sleepMin < wakeMin ? ' (gece yarısını aşar)' : '';
-  return `Hatırlatmalar ${wake} – ${sleep} arasında gelir${crosses}. ${sleep} – ${wake} arasında sessiz kalır.`;
+  return `Hatırlatmalar ${wake} – ${sleep} arasında gelir${crosses}. ${sleep} – ${wake} arasında bildirim gelmez.`;
 }

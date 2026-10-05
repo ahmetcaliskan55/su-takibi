@@ -1,5 +1,6 @@
 import type { Activity, Tone } from '@/domain/profile';
-import { validateGoal } from '@/domain/water';
+import { DEFAULT_INTERVAL_MIN } from '@/domain/profile';
+import { DEFAULT_GOAL_ML, validateGoal } from '@/domain/water';
 import { ensureDaysThrough } from './days';
 import { createMutex, type Mutex } from './mutex';
 import type { Db } from './types';
@@ -62,6 +63,12 @@ export interface SettingsRepository {
   setGlassAmount(glassMl: number): Promise<void>;
   saveProfile(profile: Profile): Promise<void>;
   saveReminderPrefs(prefs: ReminderPrefs): Promise<void>;
+  /**
+   * Tüm kullanıcı verisini siler: su kayıtları, günler (hedef anlık görüntüleri), profil ve ayarlar. Ayarlar varsayılana döner
+   * ve ilk kurulum yeniden gösterilir. Tek işlemde yapılır; hata olursa hiçbir şey silinmez.
+   * (Planlı bildirimlerin iptali işletim sistemi katmanının işidir.)
+   */
+  eraseAllData(): Promise<void>;
   /** İlk kurulumu tek işlemde kaydeder; yarım kalırsa hiçbir şey yazılmaz. */
   completeOnboarding(input: {
     goalMl: number;
@@ -148,6 +155,22 @@ export function createSettingsRepository(db: Db, exclusive: Mutex = createMutex(
     async saveReminderPrefs(prefs) {
       assertPrefs(prefs);
       return exclusive(async () => void (await writePrefs(prefs)));
+    },
+
+    eraseAllData() {
+      return exclusive(() =>
+        db.withTransactionAsync(async () => {
+          await db.runAsync('DELETE FROM water_logs');
+          await db.runAsync('DELETE FROM days');
+          await db.runAsync("DELETE FROM sqlite_sequence WHERE name = 'water_logs'");
+          await db.runAsync('UPDATE profile SET age = NULL, weight_kg = NULL, activity = NULL WHERE id = 1');
+          await db.runAsync(
+            `UPDATE settings SET daily_goal_ml = ?, glass_ml = 250, reminders_enabled = 1, interval_min = ?,
+               wake_min = 480, sleep_min = 1380, tone = 'komik', onboarding_done = 0 WHERE id = 1`,
+            [DEFAULT_GOAL_ML, DEFAULT_INTERVAL_MIN],
+          );
+        }),
+      );
     },
 
     async completeOnboarding({ goalMl, glassMl, profile, reminders, todayKey }) {
