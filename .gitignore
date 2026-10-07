@@ -37,3 +37,10 @@ yarn-error.*
 /ios
 /android
 coverage/
+
+# Mobil derleme çıktıları ve platform yapılandırmaları
+*.apk
+*.aab
+*.ipa
+google-services.json
+GoogleService-Info.plist
