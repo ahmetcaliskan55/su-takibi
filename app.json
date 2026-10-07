@@ -30,6 +30,13 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.ahmetcaliskan55.yudumla"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e00e1d85-6ff1-432d-a814-cc769695d07a"
+      }
+    },
+    "owner": "ahmetcaliskan55"
   }
 }
